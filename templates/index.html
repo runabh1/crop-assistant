@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="AI-Based Crop Recommendation & Advisory System for Marginal Farmers — Satellite imagery, soil sensor integration, and weather-responsive advisory.">
+    <title>🌾 Smart Farming Decision System</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&family=Noto+Sans+Assamese:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <!-- HEADER -->
+    <header class="app-header" id="appHeader">
+        <div class="header-left">
+            <div class="logo">
+                <span class="logo-icon">🌾</span>
+                <div class="logo-text">
+                    <h1>Smart Farming</h1>
+                    <span class="logo-subtitle">AI Decision System for Marginal Farmers</span>
+                </div>
+            </div>
+        </div>
+        <div class="header-center">
+            <div class="header-stat live"><span class="pulse-dot"></span><span class="stat-text">Live</span></div>
+            <div class="header-stat"><span class="stat-icon">🧠</span><span class="stat-text">ML Models</span></div>
+            <div class="header-stat"><span class="stat-icon">🛰️</span><span class="stat-text">Satellite</span></div>
+            <div class="header-stat"><span class="stat-icon">🌤️</span><span class="stat-text">Weather</span></div>
+            <div class="header-stat"><span class="stat-icon">✨</span><span class="stat-text">Gemini AI</span></div>
+        </div>
+        <div class="header-right">
+            <button class="lang-toggle" id="langToggle" aria-label="Toggle language">
+                <span class="lang-icon" id="langIcon">🌐</span>
+                <span class="lang-text" id="langText">অসমীয়া</span>
+            </button>
+            <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">
+                <span class="theme-icon" id="themeIcon">🌙</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- MAIN LAYOUT -->
+    <div class="app-layout">
+        <!-- LEFT PANEL -->
+        <aside class="input-panel" id="inputPanel">
+            <!-- Mode Tabs -->
+            <div class="mode-tabs">
+                <button class="mode-tab active" id="tabAuto" data-mode="auto">
+                    <span>🛰️</span> Smart Mode
+                    <small>GPS + Weather + Satellite</small>
+                </button>
+                <button class="mode-tab" id="tabManual" data-mode="manual">
+                    <span>🌡️</span> Sensor Mode
+                    <small>Manual Input</small>
+                </button>
+            </div>
+
+            <form id="sensorForm" class="sensor-form">
+                <!-- AUTO MODE: Location -->
+                <div class="mode-section auto-section" id="autoSection">
+                    <div class="input-group location-group">
+                        <h3 class="group-title">📍 Your Location</h3>
+                        <button type="button" class="btn-location" id="getLocationBtn">
+                            <span class="loc-icon">📍</span>
+                            <div class="loc-text">
+                                <strong>Detect My Location</strong>
+                                <small>Uses GPS for weather & satellite data</small>
+                            </div>
+                        </button>
+                        <div class="location-info hidden" id="locationInfo">
+                            <div class="loc-badge" id="locBadge">📍 Fetching...</div>
+                            <div class="loc-coords" id="locCoords"></div>
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <h3 class="group-title">🧪 Soil Data (Sensor / Estimated)</h3>
+                        <p class="group-hint">Enter if you have soil test data, or leave defaults</p>
+                        <div class="input-row">
+                            <div class="input-field">
+                                <label for="autoN">Nitrogen (N)</label>
+                                <div class="input-wrapper">
+                                    <input type="number" id="autoN" value="60" min="0" max="200">
+                                    <span class="input-unit">kg/ha</span>
+                                </div>
+                            </div>
+                            <div class="input-field">
+                                <label for="autoP">Phosphorus (P)</label>
+                                <div class="input-wrapper">
+                                    <input type="number" id="autoP" value="40" min="0" max="150">
+                                    <span class="input-unit">kg/ha</span>
+                                </div>
+                            </div>
+                            <div class="input-field">
+                                <label for="autoK">Potassium (K)</label>
+                                <div class="input-wrapper">
+                                    <input type="number" id="autoK" value="40" min="0" max="200">
+                                    <span class="input-unit">kg/ha</span>
+                                </div>
+                            </div>
+                            <div class="input-field">
+                                <label for="autoPH">Soil pH</label>
+                                <div class="input-wrapper">
+                                    <input type="number" id="autoPH" value="6.5" min="0" max="14" step="0.1">
+                                    <span class="input-unit">pH</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Live Weather Preview -->
+                    <div class="weather-preview hidden" id="weatherPreview">
+                        <div class="weather-header">
+                            <img id="weatherIcon" src="" alt="weather">
+                            <div>
+                                <div class="weather-temp" id="weatherTemp">—</div>
+                                <div class="weather-desc" id="weatherDesc">—</div>
+                            </div>
+                        </div>
+                        <div class="weather-details" id="weatherDetails"></div>
+                    </div>
+                </div>
+
+                <!-- MANUAL MODE: Full Inputs -->
+                <div class="mode-section manual-section hidden" id="manualSection">
+                    <div class="input-group">
+                        <h3 class="group-title">🧪 Soil Nutrients</h3>
+                        <div class="input-row">
+                            <div class="input-field">
+                                <label for="inputN">Nitrogen (N)</label>
+                                <div class="input-wrapper">
+                                    <input type="number" id="inputN" value="80" min="0" max="200">
+                                    <span class="input-unit">kg/ha</span>
+                                </div>
+                                <input type="range" class="slider" id="sliderN" min="0" max="200" value="80">
+                            </div>
+                            <div class="input-field">
+                                <label for="inputP">Phosphorus (P)</label>
+                                <div class="input-wrapper">
+                                    <input type="number" id="inputP" value="45" min="0" max="150">
+                                    <span class="input-unit">kg/ha</span>
+                                </div>
+                                <input type="range" class="slider" id="sliderP" min="0" max="150" value="45">
+                            </div>
+                            <div class="input-field">
+                                <label for="inputK">Potassium (K)</label>
+                                <div class="input-wrapper">
+                                    <input type="number" id="inputK" value="40" min="0" max="200">
+                                    <span class="input-unit">kg/ha</span>
+                                </div>
+                                <input type="range" class="slider" id="sliderK" min="0" max="200" value="40">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <h3 class="group-title">☁️ Weather & Soil</h3>
+                        <div class="input-row">
+                            <div class="input-field">
+                                <label for="inputTemp">Temperature</label>
+                                <div class="input-wrapper">
+                                    <input type="number" id="inputTemp" value="26" min="0" max="50" step="0.5">
+                                    <span class="input-unit">°C</span>
+                                </div>
+                                <input type="range" class="slider" id="sliderTemp" min="0" max="50" value="26" step="0.5">
+                            </div>
+                            <div class="input-field">
+                                <label for="inputHumidity">Humidity</label>
+                                <div class="input-wrapper">
+                                    <input type="number" id="inputHumidity" value="70" min="0" max="100">
+                                    <span class="input-unit">%</span>
+                                </div>
+                                <input type="range" class="slider" id="sliderHumidity" min="0" max="100" value="70">
+                            </div>
+                            <div class="input-field">
+                                <label for="inputPH">Soil pH</label>
+                                <div class="input-wrapper">
+                                    <input type="number" id="inputPH" value="6.5" min="0" max="14" step="0.1">
+                                    <span class="input-unit">pH</span>
+                                </div>
+                                <input type="range" class="slider" id="sliderPH" min="0" max="14" value="6.5" step="0.1">
+                            </div>
+                            <div class="input-field">
+                                <label for="inputRainfall">Rainfall</label>
+                                <div class="input-wrapper">
+                                    <input type="number" id="inputRainfall" value="150" min="0" max="500">
+                                    <span class="input-unit">mm</span>
+                                </div>
+                                <input type="range" class="slider" id="sliderRainfall" min="0" max="500" value="150">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-predict" id="predictBtn">
+                    <span class="btn-icon">🚀</span>
+                    <span class="btn-text">Analyze & Predict</span>
+                    <span class="btn-loader" id="btnLoader"></span>
+                </button>
+            </form>
+        </aside>
+
+        <!-- MAIN CONTENT -->
+        <main class="main-content" id="mainContent">
+            <!-- Welcome -->
+            <div class="welcome-state" id="welcomeState">
+                <div class="welcome-icon">🌾</div>
+                <h2>AI-Based Crop Recommendation & Advisory</h2>
+                <p>Empowering marginal farmers with satellite imagery, real-time weather, soil sensor integration, and AI-driven advisory services.</p>
+                <div class="welcome-features">
+                    <div class="welcome-feature"><span>🛰️</span><p>Planet Satellite</p></div>
+                    <div class="welcome-feature"><span>🌤️</span><p>Live Weather</p></div>
+                    <div class="welcome-feature"><span>🌾</span><p>Crop AI</p></div>
+                    <div class="welcome-feature"><span>📈</span><p>Yield & Price</p></div>
+                    <div class="welcome-feature"><span>🌿</span><p>Disease AI</p></div>
+                    <div class="welcome-feature"><span>🧠</span><p>Gemini Advisory</p></div>
+                </div>
+                <div class="welcome-cta">
+                    <p>👆 Select <strong>Smart Mode</strong> and click <strong>Detect My Location</strong> to start, or use <strong>Sensor Mode</strong> for manual input.</p>
+                </div>
+            </div>
+
+            <!-- Results -->
+            <div class="results-state hidden" id="resultsState">
+                <!-- Location & Weather Banner -->
+                <div class="weather-banner hidden" id="weatherBanner">
+                    <div class="banner-location">
+                        <span class="banner-icon">📍</span>
+                        <span id="bannerCity">—</span>
+                    </div>
+                    <div class="banner-weather">
+                        <img id="bannerWeatherIcon" src="" alt="">
+                        <span id="bannerTemp">—</span>
+                        <span id="bannerDesc">—</span>
+                    </div>
+                    <div class="banner-extras">
+                        <span>💧 <span id="bannerHumidity">—</span></span>
+                        <span>🌧️ <span id="bannerRainfall">—</span></span>
+                        <span>💨 <span id="bannerWind">—</span></span>
+                    </div>
+                    <span class="banner-badge">🛰️ Live Data</span>
+                </div>
+
+                <!-- Result Cards -->
+                <section class="results-grid" id="resultsGrid">
+                    <div class="result-card crop-card"><div class="card-header"><span class="card-icon">🌾</span><h3>Recommended Crop</h3></div><div class="card-value" id="cropValue">—</div><div class="card-detail" id="cropConfidence">Confidence: —</div><div class="card-extra" id="topCrops"></div></div>
+                    <div class="result-card yield-card"><div class="card-header"><span class="card-icon">📈</span><h3>Yield Prediction</h3></div><div class="card-value" id="yieldValue">—</div><div class="card-detail" id="yieldUnit">tons/hectare</div></div>
+                    <div class="result-card price-card"><div class="card-header"><span class="card-icon">💰</span><h3>Market Price</h3></div><div class="card-value" id="priceValue">—</div><div class="card-detail" id="priceUnit">₹/quintal</div><div class="card-extra" id="mspInfo"></div></div>
+                    <div class="result-card profit-card"><div class="card-header"><span class="card-icon">🤑</span><h3>Expected Profit</h3></div><div class="card-value" id="profitValue">—</div><div class="card-detail" id="profitUnit">₹/hectare</div></div>
+                    <div class="result-card market-card"><div class="card-header"><span class="card-icon">📊</span><h3>Market Timing</h3></div><div class="card-value" id="marketDecision">—</div><div class="card-detail" id="marketReason"></div></div>
+                    <div class="result-card risk-card"><div class="card-header"><span class="card-icon">⚡</span><h3>Risk Level</h3></div><div class="card-value" id="riskLevel">—</div><div class="card-detail" id="riskScore"></div><div class="card-extra" id="riskReasons"></div></div>
+                </section>
+
+                <!-- Alert Banners -->
+                <section class="alerts-section" id="alertsSection"></section>
+
+                <!-- Risk Breakdown -->
+                <section class="risk-section" id="riskSection">
+                    <div class="section-header"><h2>⚡ Risk Analysis</h2></div>
+                    <div class="risk-factors" id="riskFactors"></div>
+                </section>
+
+                <!-- NDVI Timeline -->
+                <section class="ndvi-timeline-section" id="ndviTimelineSection">
+                    <div class="section-header"><h2>📈 NDVI Crop Health Timeline</h2><span class="timeline-badge">12 Months</span></div>
+                    <div class="chart-card"><canvas id="ndviTimelineChart"></canvas></div>
+                </section>
+
+                <!-- NDVI -->
+                <section class="ndvi-section" id="ndviSection">
+                    <div class="section-header"><h2>📡 NDVI Satellite Crop Health</h2><span class="ndvi-source-badge" id="ndviSourceBadge"></span></div>
+                    <div class="ndvi-grid">
+                        <div class="ndvi-gauge-container">
+                            <canvas id="ndviGauge" width="280" height="200"></canvas>
+                            <div class="ndvi-value-display"><span class="ndvi-number" id="ndviNumber">—</span><span class="ndvi-label" id="ndviLabel">—</span></div>
+                        </div>
+                        <div class="ndvi-details" id="ndviDetails">
+                            <div class="ndvi-scale"><div class="scale-label">NDVI Scale</div><div class="scale-bar"><div class="scale-segment poor">Poor<br>0-0.3</div><div class="scale-segment moderate">Moderate<br>0.3-0.6</div><div class="scale-segment healthy">Healthy<br>0.6-1.0</div></div></div>
+                            <div class="ndvi-satellite-info hidden" id="ndviSatelliteInfo"></div>
+                            <div class="ndvi-factors" id="ndviFactors"></div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Disease Detection -->
+                <section class="disease-section" id="diseaseSection">
+                    <div class="section-header"><h2>🌿 Plant Disease Detection</h2></div>
+                    <div class="disease-grid">
+                        <div class="disease-upload">
+                            <div class="upload-zone" id="uploadZone">
+                                <input type="file" id="diseaseImageInput" accept="image/*" hidden>
+                                <div class="upload-content" id="uploadContent"><span class="upload-icon">📸</span><p class="upload-text">Drop leaf image or <strong>click to upload</strong></p><p class="upload-hint">JPG, PNG | Max 10MB</p></div>
+                                <div class="upload-preview hidden" id="uploadPreview"><img id="previewImage" alt="Leaf"><button class="btn-remove-image" id="removeImage">✕</button></div>
+                            </div>
+                            <button class="btn-detect" id="detectBtn" disabled><span>🔬 Detect Disease</span></button>
+                        </div>
+                        <div class="disease-result hidden" id="diseaseResult">
+                            <div class="disease-header"><span class="disease-icon" id="diseaseIcon">🦠</span><div><h3 id="diseaseName">—</h3><div class="disease-confidence" id="diseaseConfidence">—</div></div></div>
+                            <div class="disease-treatment" id="diseaseTreatment"><h4>💊 Treatment</h4><p id="treatmentText">—</p></div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Charts -->
+                <section class="charts-section" id="chartsSection">
+                    <div class="section-header"><h2>📊 Analytics & Visualizations</h2></div>
+                    <div class="charts-grid">
+                        <div class="chart-card"><h3>🌾 Crop Probabilities</h3><canvas id="cropChart"></canvas></div>
+                        <div class="chart-card"><h3>📊 Feature Importance (Crop)</h3><canvas id="featureChart"></canvas></div>
+                        <div class="chart-card"><h3>📈 Feature Importance (Yield)</h3><canvas id="yieldFeatureChart"></canvas></div>
+                        <div class="chart-card"><h3>📡 NDVI Factors</h3><canvas id="ndviChart"></canvas></div>
+                    </div>
+                </section>
+
+                <!-- Advisory -->
+                <section class="advisory-section" id="advisorySection">
+                    <div class="section-header"><h2>🧠 Smart Advisory</h2><span class="advisory-source-badge" id="advisorySourceBadge"></span></div>
+                    <div class="advisory-summary" id="advisorySummary"></div>
+                    <div class="advisory-list" id="advisoryList"></div>
+                    <div class="advisory-extras" id="advisoryExtras"></div>
+                </section>
+
+                <!-- Mandi Prices -->
+                <section class="mandi-section" id="mandiSection">
+                    <div class="section-header"><h2>🏪 Live Mandi Prices</h2><span class="mandi-badge">data.gov.in</span></div>
+                    <div class="mandi-controls">
+                        <div class="mandi-search">
+                            <input type="text" id="mandiCommodity" placeholder="Commodity (e.g. Rice, Wheat)" class="mandi-input">
+                            <input type="text" id="mandiState" placeholder="State (optional)" class="mandi-input">
+                            <button class="btn-mandi" id="fetchMandiBtn">🔍 Fetch Prices</button>
+                        </div>
+                    </div>
+                    <div class="mandi-results" id="mandiResults">
+                        <p class="mandi-hint">Enter a commodity name and click Fetch to see live mandi prices across India</p>
+                    </div>
+                </section>
+
+                <!-- Disaster Decision Engine -->
+                <section class="disaster-section" id="disasterSection">
+                    <div class="section-header"><h2>🌊 Disaster Decision Engine</h2><span class="disaster-badge">Gemini AI</span></div>
+                    <div class="disaster-controls">
+                        <select id="disasterType" class="disaster-select">
+                            <option value="flood">🌊 Flood</option>
+                            <option value="drought">☀️ Drought</option>
+                            <option value="cyclone">🌀 Cyclone</option>
+                            <option value="heatwave">🔥 Heatwave</option>
+                            <option value="frost">❄️ Frost / Cold Wave</option>
+                            <option value="hailstorm">🧊 Hailstorm</option>
+                            <option value="pest_outbreak">🦗 Pest Outbreak</option>
+                        </select>
+                        <select id="disasterSeverity" class="disaster-select">
+                            <option value="mild">Mild</option>
+                            <option value="moderate" selected>Moderate</option>
+                            <option value="severe">Severe</option>
+                        </select>
+                        <input type="text" id="disasterLocation" placeholder="Location" class="disaster-input" value="">
+                        <button class="btn-disaster" id="runDisasterBtn">⚡ Generate Response Plan</button>
+                    </div>
+                    <div class="disaster-results hidden" id="disasterResults"></div>
+                </section>
+
+                <!-- AI Chatbot -->
+                <section class="chat-section" id="chatSection">
+                    <div class="section-header"><h2>💬 Ask Farming AI</h2><span class="chat-badge">Gemini AI</span></div>
+                    <div class="chat-container">
+                        <div class="chat-messages" id="chatMessages">
+                            <div class="chat-msg bot"><div class="msg-avatar">🧠</div><div class="msg-content"><p data-i18n="chat_welcome">Hi! I'm your AI farming advisor. Ask me anything about crop suitability, farming techniques, soil management, or government schemes. For example:</p><ul><li data-i18n="chat_ex1">"Is sugarcane suitable for my area?"</li><li data-i18n="chat_ex2">"What fertilizer schedule for rice?"</li><li data-i18n="chat_ex3">"Best crop for sandy soil with low rainfall?"</li></ul></div></div>
+                        </div>
+                        <div class="chat-input-area">
+                            <button class="btn-voice" id="voiceBtn" aria-label="Voice input" title="Speak in Assamese or English">
+                                <span id="voiceIcon">🎤</span>
+                            </button>
+                            <input type="text" id="chatInput" placeholder="Ask about crop suitability, techniques, schemes..." class="chat-text-input" data-i18n-placeholder="chat_placeholder">
+                            <button class="btn-chat-send" id="chatSendBtn">➤</button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Report -->
+                <section class="report-section" id="reportSection">
+                    <div class="section-header"><h2>📄 Complete Report</h2><div><button class="btn-print" id="downloadReport">📥 Download</button> <button class="btn-print" id="printReport">🖨️ Print</button></div></div>
+                    <div class="report-content" id="reportContent"></div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <footer class="app-footer">
+        <p>🌾 Smart Farming Decision System © 2026 | AI + Satellite + Weather + Sensors | Hackathon Project</p>
+    </footer>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
