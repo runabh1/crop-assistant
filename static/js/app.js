@@ -835,12 +835,17 @@ function setupDiseaseUpload() {
             if (data.success) {
                 const result = document.getElementById('diseaseResult');
                 result.classList.remove('hidden');
-                document.getElementById('diseaseIcon').textContent = data.disease === 'Healthy Leaf' ? '✅' : '🦠';
+                document.getElementById('diseaseIcon').textContent = data.disease.toLowerCase().includes('healthy') ? '✅' : '🦠';
                 document.getElementById('diseaseName').textContent = data.disease;
-                document.getElementById('diseaseConfidence').textContent = `Confidence: ${data.confidence}%`;
+                document.getElementById('diseaseConfidence').textContent = `Confidence: ${data.confidence}% (${data.model || 'Image analysis'})`;
                 document.getElementById('treatmentText').textContent = data.treatment;
+            } else {
+                alert(data.error || 'Disease detection failed');
             }
-        } catch(e) { console.error(e); }
+        } catch(e) {
+            console.error(e);
+            alert('Disease detection failed. Please try again.');
+        }
 
         detectBtn.disabled = false;
         detectBtn.innerHTML = '<span>🔬 Detect Disease</span>';
@@ -995,7 +1000,7 @@ async function fetchSmartNews() {
     feedEl.innerHTML = '<p class="news-loading">📡 Loading farming news...</p>';
     
     try {
-        const resp = await fetch(`/api/news?type=${currentNewsType}&limit=12`, {
+        const resp = await fetch(`/api/news?type=${currentNewsType}&limit=3`, {
             method: 'GET'
         });
         
@@ -1056,7 +1061,7 @@ async function searchNews() {
     
     try {
         // For custom search, we'll fetch all and filter client-side
-        const resp = await fetch(`/api/news?type=all&limit=50`, { method: 'GET' });
+        const resp = await fetch(`/api/news?type=all&limit=12`, { method: 'GET' });
         const data = await resp.json();
         
         if (!data.success || !data.articles) {

@@ -26,15 +26,16 @@ if sys.platform == "win32":
     import codecs
     sys.stdout = codecs.getwriter("utf-8")(sys.stdout.buffer)
 
-# Load environment variables from .env file
-load_dotenv()
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# Load environment variables from this app's .env file, regardless of launch directory.
+load_dotenv(os.path.join(BASE_DIR, ".env"), override=True)
 
 warnings.filterwarnings("ignore")
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # CONFIGURATION (All keys loaded from .env file)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 app = Flask(__name__, static_folder="static", template_folder="templates")
 CORS(app)
 app.secret_key = "smart_farming_secret_key_2024"  # For sessions
@@ -233,6 +234,39 @@ DISEASE_DB = [
     {"name": "Fusarium Wilt", "confidence": 88.4, "treatment": "Apply Trichoderma viride @ 4g/kg seed. Practice crop rotation (3+ years). Use resistant varieties."},
     {"name": "Healthy Leaf", "confidence": 95.2, "treatment": "No treatment needed. Continue regular maintenance. Monitor for early signs of disease."}
 ]
+
+DISEASE_TREATMENTS = {
+    "healthy": "No disease detected. Continue regular monitoring, balanced irrigation, and field sanitation.",
+    "bacterial": "Remove infected leaves where practical. Apply copper oxychloride/copper hydroxide as per label, avoid overhead irrigation, and use disease-free seed or seedlings.",
+    "blight": "Remove infected foliage and improve spacing for airflow. Apply Mancozeb or Chlorothalonil as per label and avoid working in wet fields.",
+    "rust": "Remove volunteer host plants and heavily infected leaves. Spray Propiconazole or Tebuconazole as per label when symptoms are active.",
+    "mosaic": "There is no chemical cure for viral mosaic. Rogue infected plants early, control aphid/whitefly vectors, and use resistant or certified planting material.",
+    "yellow": "Use resistant varieties where available, remove infected plants, and manage whitefly/aphid vectors with recommended integrated pest management.",
+    "curl": "Manage whitefly vectors, remove infected plants, and use virus-free seedlings and resistant varieties where available.",
+    "rot": "Improve drainage, remove infected plant debris, avoid replanting susceptible crops in the same field, and use recommended fungicide/biocontrol treatments.",
+    "mold": "Improve ventilation and reduce leaf wetness. Apply a recommended fungicide such as Mancozeb/Chlorothalonil as per local extension guidance.",
+    "spot": "Remove diseased leaves, avoid overhead irrigation, rotate crops, and apply copper or Mancozeb-based protection as per label.",
+    "mites": "Spray water to reduce dust, conserve beneficial insects, and use a recommended miticide if infestation is severe.",
+    "septoria": "Remove lower infected leaves, mulch to prevent soil splash, rotate crops, and apply Chlorothalonil/Mancozeb as per label.",
+}
+
+
+def normalize_disease_label(label):
+    label = str(label).replace("___", " ").replace("__", " ").replace("_", " ")
+    return " ".join(label.split()).title()
+
+
+def treatment_for_disease(label):
+    normalized = normalize_disease_label(label)
+    lower = normalized.lower()
+    for key, treatment in DISEASE_TREATMENTS.items():
+        if key in lower:
+            return treatment
+    return (
+        "Isolate affected plants if symptoms are spreading, remove infected leaves, "
+        "avoid overhead irrigation, and consult the local agriculture extension office "
+        "for a crop-specific spray schedule."
+    )
 
 
 def clamp(value, minimum, maximum):
@@ -527,7 +561,7 @@ def fetch_weather(lat, lon):
         }, timeout=8)
 
         if resp.status_code != 200:
-            print(f"⚠️ Weather API error: {resp.status_code}")
+            print(f"Weather API error: {resp.status_code} - {resp.text[:200]}")
             return None
 
         data = resp.json()
@@ -1150,9 +1184,17 @@ def get_crops():
 def weather_endpoint():
     """Fetch live weather for given coordinates."""
     try:
-        data = request.get_json()
-        lat = float(data["latitude"])
-        lon = float(data["longitude"])
+        data = request.get_json(silent=True) or {}
+        lat_value = data.get("latitude", data.get("lat"))
+        lon_value = data.get("longitude", data.get("lon"))
+        if lat_value is None or lon_value is None:
+            return jsonify({
+                "success": False,
+                "error": "Latitude and longitude are required"
+            }), 400
+
+        lat = float(lat_value)
+        lon = float(lon_value)
         weather = fetch_weather(lat, lon)
         if weather:
             return jsonify({"success": True, **weather})
@@ -1617,7 +1659,7 @@ def ndvi_endpoint():
 @app.route("/api/disease", methods=["POST"])
 def disease_endpoint():
 
-    """Plant disease detection from leaf image (simple color-based fallback)."""
+    """Plant disease detection from leaf image using lightweight image analysis."""
     try:
         if "image" not in request.files:
             return jsonify({"success": False, "error": "No image file provided"}), 400
@@ -1638,22 +1680,22 @@ def disease_endpoint():
         brightness = (r_mean + g_mean + b_mean) / 3.0
 
         if green_ratio > 0.38 and brown_ratio < 1.1:
-            disease = {"name": "Healthy Leaf", "confidence": 95.2, "treatment": "No treatment needed. Continue regular maintenance. Monitor for early signs of disease."}
+            disease_name = "Healthy Leaf"
             confidence = round(85 + green_ratio * 20, 1)
         elif brown_ratio > 1.5:
-            disease = {"name": "Rust Disease", "confidence": 91.2, "treatment": "Spray Propiconazole 25% EC @ 1ml/L. Remove volunteer plants. Use resistant varieties."} if brightness > 150 else {"name": "Leaf Blight", "confidence": 87.3, "treatment": "Apply Mancozeb 75% WP @ 2.5g/L water. Remove infected leaves. Ensure proper spacing for air circulation."}
+            disease_name = "Rust Disease" if brightness > 150 else "Leaf Blight"
             confidence = round(70 + brown_ratio * 5, 1)
         elif r_mean > g_mean * 1.2:
-            disease = {"name": "Anthracnose", "confidence": 84.6, "treatment": "Apply Carbendazim 50% WP @ 1g/L. Avoid overhead irrigation. Remove crop debris."}
+            disease_name = "Anthracnose"
             confidence = round(72 + (r_mean / g_mean) * 5, 1)
         elif brightness < 100:
-            disease = {"name": "Fusarium Wilt", "confidence": 88.4, "treatment": "Apply Trichoderma viride @ 4g/kg seed. Practice crop rotation (3+ years). Use resistant varieties."}
+            disease_name = "Fusarium Wilt"
             confidence = round(68 + (100 - brightness) * 0.2, 1)
         elif g_mean < 100:
-            disease = {"name": "Powdery Mildew", "confidence": 82.1, "treatment": "Spray Sulphur 80% WP @ 3g/L or Karathane @ 1ml/L. Avoid excess nitrogen fertilization."} if b_mean > g_mean else {"name": "Bacterial Leaf Spot", "confidence": 79.5, "treatment": "Apply Copper Oxychloride 50% WP @ 3g/L. Practice crop rotation. Use disease-free seeds."}
+            disease_name = "Powdery Mildew" if b_mean > g_mean else "Bacterial Leaf Spot"
             confidence = round(65 + (100 - g_mean) * 0.3, 1)
         else:
-            disease = {"name": "Mosaic Virus", "confidence": 76.8, "treatment": "No chemical cure. Remove infected plants. Control aphid vectors with Imidacloprid. Use virus-free seeds."}
+            disease_name = "Mosaic Virus"
             confidence = round(60 + abs(r_mean - g_mean) * 0.5, 1)
 
         confidence = min(confidence, 97.5)
@@ -1666,14 +1708,11 @@ def disease_endpoint():
 
         return jsonify({
             "success": True,
-            "disease": disease["name"],
+            "disease": disease_name,
             "confidence": confidence,
-            "treatment": disease["treatment"],
+            "treatment": treatment_for_disease(disease_name),
             "image_preview": f"data:image/jpeg;base64,{img_base64}",
-            "color_analysis": {
-                "red_mean": round(r_mean, 1), "green_mean": round(g_mean, 1),
-                "blue_mean": round(b_mean, 1), "green_ratio": round(green_ratio, 3)
-            }
+            "model": "Image analysis",
         })
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
@@ -1955,7 +1994,9 @@ def get_news():
             data = request.args.to_dict()
         
         search_type = data.get("type", "agriculture").lower()  # agriculture, weather, prices, technology, all, assam
-        limit = int(data.get("limit", 12))
+        requested_limit = int(data.get("limit", 12))
+        limit = max(1, min(requested_limit, 12))
+        provider_limit = min(limit, 3)
         use_cache = data.get("cache", True)
         
         # Check cache first (per category)
@@ -1985,7 +2026,7 @@ def get_news():
                 "language": "en",
                 "categories": "business,tech,science,general",
                 "search": search_query,
-                "limit": min(limit * 2, 50)  # Fetch extra to filter
+                "limit": provider_limit
             }
             
             print(f"🔍 Fetching {search_type} news from TheNewsAPI...")
@@ -1995,27 +2036,13 @@ def get_news():
                 error_msg = resp.json().get("error", {}).get("message", f"API Error {resp.status_code}")
                 print(f"❌ TheNewsAPI Error: {error_msg}")
                 
-                if "not available on your current subscription" in error_msg:
-                    # Return mock data for demo if API plan is insufficient
-                    return get_mock_news(search_type, limit)
-                
-                return jsonify({
-                    "success": False,
-                    "error": error_msg,
-                    "message": "Unable to fetch news at this moment"
-                }), 500
+                return get_mock_news(search_type, limit)
             
             news_data = resp.json()
             articles = news_data.get("data", [])
             
             if not articles:
-                return jsonify({
-                    "success": True,
-                    "type": search_type,
-                    "total": 0,
-                    "articles": [],
-                    "message": "No articles found for this category"
-                })
+                return get_mock_news(search_type, limit)
             
             # Cache the results (per category)
             NEWS_CACHE[cache_key] = {"data": articles, "timestamp": current_time}
@@ -2056,11 +2083,7 @@ def get_news():
         print(f"❌ News API Exception: {str(e)}")
         import traceback
         traceback.print_exc()
-        return jsonify({
-            "success": False,
-            "error": str(e),
-            "message": "Error fetching agricultural news"
-        }), 500
+        return get_mock_news("agriculture", 12)
 
 
 @app.route("/api/alternative-crops", methods=["POST"])
@@ -2197,7 +2220,7 @@ if __name__ == "__main__":
     print("\n🌾 Smart Farming Decision System — Hackathon Edition")
     print("━" * 55)
     print(f"📊 ML Models: crop, yield, price ({len(CROP_CLASSES)} crops)")
-    print(f"🤖 Disease Detection: Kaggle ResNet50 (94 classes, 96.39% accuracy)")
+    print("Disease Detection: lightweight image analysis")
     print(f"🛰️  Planet Satellite API: Active")
     print(f"🌤️  OpenWeatherMap API: Active")
     print(f"🧠 Gemini AI Advisory: Active")
