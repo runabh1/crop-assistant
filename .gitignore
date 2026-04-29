@@ -8,5 +8,4 @@ venv/
 dist/
 build/
 .gemini/
-*.pkl
 *.h5
