@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&family=Noto+Sans+Assamese:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/style.css?v=20260429-ui-fix">
 </head>
 <body>
     <!-- HEADER -->
@@ -271,9 +271,6 @@
                     </div>
                 </div>
 
-                <!-- Alert Banners (original) -->
-                <section class="alerts-section" id="alertsSection"></section>
-
                 <!-- Risk Breakdown -->
                 <section class="risk-section" id="riskSection">
                     <div class="section-header"><h2>⚡ Risk Analysis</h2></div>
@@ -283,7 +280,7 @@
                 <!-- NDVI Timeline -->
                 <section class="ndvi-timeline-section" id="ndviTimelineSection">
                     <div class="section-header"><h2>📈 NDVI Crop Health Timeline</h2><span class="timeline-badge">12 Months</span></div>
-                    <div class="chart-card"><canvas id="ndviTimelineChart"></canvas></div>
+                    <div class="chart-card ndvi-timeline-card"><canvas id="ndviTimelineChart"></canvas></div>
                 </section>
 
                 <!-- NDVI -->
@@ -458,6 +455,6 @@
         <p>🌾 Smart Farming Decision System © 2026 | AI + Satellite + Weather + Sensors | Hackathon Project</p>
     </footer>
 
-    <script src="/static/js/app.js"></script>
+    <script src="/static/js/app.js?v=20260429-ui-fix"></script>
 </body>
 </html>

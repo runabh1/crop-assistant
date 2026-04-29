@@ -103,6 +103,10 @@ crop_encoder = joblib.load(os.path.join(BASE_DIR, "crop_encoder.pkl"))
 yield_model = joblib.load(os.path.join(BASE_DIR, "yield_model.pkl"))
 price_model = joblib.load(os.path.join(BASE_DIR, "price_model.pkl"))
 price_encoder = joblib.load(os.path.join(BASE_DIR, "price_encoder.pkl"))
+
+for model in (crop_model, yield_model, price_model):
+    if hasattr(model, "n_jobs"):
+        model.n_jobs = 1
 print("✅ All models loaded successfully!")
 
 # Validate model feature names at startup
@@ -1318,6 +1322,7 @@ def predict():
             "crop": {
                 "name": crop_name.title(),
                 "confidence": crop_result["confidence"],
+                "display_confidence": crop_result["display_confidence"],
                 "confidence_rating": crop_result["confidence_rating"],
                 "low_confidence_message": "Low confidence recommendation" if crop_result["low_confidence"] else None,
                 "pipeline_crop_name": pipeline_crop_name.title(),

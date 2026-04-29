@@ -185,6 +185,8 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
 .ndvi-timeline-section{margin-bottom:20px;padding:20px;background:var(--bg-card);border-radius:var(--radius-lg);border:1px solid var(--border-color);animation:fadeUp .5s ease .18s backwards}
 .timeline-badge{padding:4px 12px;border-radius:12px;font-size:.68rem;font-weight:600;background:rgba(34,197,94,.1);color:#22c55e;border:1px solid rgba(34,197,94,.2)}
 .chart-card{padding:10px;border-radius:var(--radius-md);background:var(--bg-input);border:1px solid var(--border-color)}
+.ndvi-timeline-card{height:320px;padding:16px;position:relative}
+.ndvi-timeline-card canvas{display:block;width:100%!important;height:100%!important;max-height:none}
 
 /* ═══ SECTION HEADERS ═══ */
 .section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
