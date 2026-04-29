@@ -45,7 +45,7 @@ GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent"
 NEWS_API_KEY = os.environ.get("NEWS_API_KEY", "")
 NEWS_API_URL = "https://api.thenewsapi.com/v1/news/top"
-NEWS_CACHE = {"data": [], "timestamp": 0}
+NEWS_CACHE = {}  # Per-category cache: {"category_name": {"data": [], "timestamp": time}}
 NEWS_CACHE_DURATION = 300  # 5 minutes
 
 
@@ -1614,12 +1614,14 @@ def fetch_agricultural_news():
         limit = int(data.get("limit", 12))
         use_cache = data.get("cache", True)
         
-        # Check cache first
+        # Check cache first (per category)
         import time
         current_time = time.time()
-        if use_cache and NEWS_CACHE.get("data") and (current_time - NEWS_CACHE.get("timestamp", 0)) < NEWS_CACHE_DURATION:
-            print(f"✅ Returning cached news ({current_time - NEWS_CACHE['timestamp']:.0f}s old)")
-            articles = NEWS_CACHE["data"]
+        cache_key = f"{search_type}_news"  # Different cache for each category
+        
+        if use_cache and cache_key in NEWS_CACHE and (current_time - NEWS_CACHE[cache_key].get("timestamp", 0)) < NEWS_CACHE_DURATION:
+            print(f"✅ Returning cached {search_type} news ({current_time - NEWS_CACHE[cache_key]['timestamp']:.0f}s old)")
+            articles = NEWS_CACHE[cache_key]["data"]
         else:
             # Define search queries for each category
             search_queries = {
@@ -1671,10 +1673,9 @@ def fetch_agricultural_news():
                     "message": "No articles found for this category"
                 })
             
-            # Cache the results
-            NEWS_CACHE["data"] = articles
-            NEWS_CACHE["timestamp"] = current_time
-            print(f"💾 Cached {len(articles)} articles")
+            # Cache the results (per category)
+            NEWS_CACHE[cache_key] = {"data": articles, "timestamp": current_time}
+            print(f"💾 Cached {len(articles)} {search_type} articles")
         
         # Format articles for frontend
         formatted_articles = []
@@ -1704,7 +1705,7 @@ def fetch_agricultural_news():
             "type": search_type,
             "total": len(formatted_articles),
             "articles": formatted_articles,
-            "cached": not use_cache or (current_time - NEWS_CACHE.get("timestamp", 0)) < NEWS_CACHE_DURATION
+            "cached": use_cache and (cache_key in NEWS_CACHE and (current_time - NEWS_CACHE[cache_key].get("timestamp", 0)) < NEWS_CACHE_DURATION)
         })
         
     except Exception as e:

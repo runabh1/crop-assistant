@@ -1588,11 +1588,11 @@ function startVoice() {
         speechRecognition.onend = () => {
             console.log('🎤 Speech recognition ended');
             stopVoice();
-            // Auto-send if we got a transcript
+            // DO NOT auto-send - user must click send button
             const chatInput = document.getElementById('chatInput');
-            if (chatInput && chatInput.value.trim()) {
-                // Add a small delay to ensure UI updates
-                setTimeout(() => sendChatMessage(), 100);
+            if (chatInput) {
+                chatInput.focus();
+                chatInput.placeholder = t('chat_placeholder');
             }
         };
 
