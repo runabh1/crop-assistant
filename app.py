@@ -1113,9 +1113,6 @@ def analyze_crop(crop_id):
 def home():
     """Comprehensive Smart Farming Decision System for authenticated users"""
     print(f"🏠 HOME route hit - session has user_email: {'user_email' in session}")
-    if "user_email" in session:
-        print(f"   -> Returning index.html (Full Analysis System)")
-        return send_from_directory(app.template_folder, "index.html")
     print(f"   -> Returning login.html")
     return send_from_directory(app.template_folder, "login.html")
 
@@ -1123,8 +1120,6 @@ def home():
 @app.route("/login")
 def login_page():
     """Login page"""
-    if "user_email" in session:
-        return send_from_directory(app.template_folder, "dashboard.html")
     return send_from_directory(app.template_folder, "login.html")
 
 
@@ -1140,7 +1135,7 @@ def analysis():
     """Comprehensive analysis page"""
     if "user_email" not in session:
         return send_from_directory(app.template_folder, "login.html")
-    return send_from_directory(app.template_folder, "analysis.html")
+    return send_from_directory(app.template_folder, "index.html")
 
 @app.route("/static/<path:path>")
 def serve_static(path):
