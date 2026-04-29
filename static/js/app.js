@@ -79,7 +79,21 @@ const i18n = {
     'mandi_prices': { en: '🏪 Live Mandi Prices', as: '🏪 লাইভ মাণ্ডিৰ মূল্য' },
     'disaster_engine': { en: '🌊 Disaster Decision Engine', as: '🌊 দুৰ্যোগ সিদ্ধান্ত ইঞ্জিন' },
     'ask_farming_ai': { en: '💬 Ask Farming AI', as: '💬 কৃষি AI ক সুধক' },
+    'farmer_news': { en: '📰 Smart Farming News', as: '📰 স্মাৰ্ট কৃষি বাতৰি' },
+    'agriculture_filter': { en: 'Agriculture', as: 'কৃষি' },
+    'weather_filter': { en: 'Weather', as: 'বতৰ' },
+    'prices_filter': { en: 'Market Prices', as: 'বজাৰ মূল্য' },
+    'tech_filter': { en: 'Technology', as: 'প্রযুক্তি' },
+    'all_filter': { en: 'All News', as: 'সকল বাতৰি' },
+    'breaking': { en: '🔴 BREAKING', as: '🔴 সাম্প্রতিক' },
     'complete_report': { en: '📄 Complete Report', as: '📄 সম্পূৰ্ণ প্ৰতিবেদন' },
+    'all_india': { en: '🇮🇳 All India', as: '🇮🇳 সকলো ভাৰত' },
+    'assam': { en: '🏞️ Assam', as: '🏞️ অসম' },
+    'subsidies': { en: '💰 Subsidies & Schemes', as: '💰 ভত্তা আৰু আঁচনি' },
+    'schemes': { en: '📋 Government Schemes', as: '📋 চৰকাৰী আঁচনি' },
+    'ag_news': { en: '📰 Agricultural News', as: '📰 কৃষি বাতৰি' },
+    'fetch_news': { en: '🔍 Fetch News', as: '🔍 বাতৰি আনক' },
+    'news_hint': { en: 'Select category and region, then click Fetch to see latest farmer-related news, subsidies, and schemes', as: 'বিভাগ আৰু অঞ্চল বাছক, তাৰ পিছত সৰ্বশেষ কৃষক সম্বন্ধীয় বাতৰি, ভত্তা আৰু আঁচনি চাবলৈ Fetch ক্লিক কৰক' },
     // Chatbot
     'chat_welcome': { en: 'Hi! I\'m your AI farming advisor. Ask me anything about crop suitability, farming techniques, soil management, or government schemes. For example:', as: 'নমস্কাৰ! মই আপোনাৰ AI কৃষি উপদেষ্টা। শস্যৰ উপযুক্ততা, কৃষি কৌশল, মাটি ব্যৱস্থাপনা, বা চৰকাৰী আঁচনিৰ বিষয়ে যিকোনো কথা সুধিব পাৰে। উদাহৰণ:' },
     'chat_ex1': { en: '"Is sugarcane suitable for my area?"', as: '"মোৰ অঞ্চলৰ বাবে কুঁহিয়াৰ উপযুক্ত নে?"' },
@@ -103,13 +117,13 @@ const i18n = {
     'live_data': { en: '🛰️ Live Data', as: '🛰️ লাইভ তথ্য' },
     '12_months': { en: '12 Months', as: '১২ মাহ' },
     // Read aloud
-    'read_aloud': { en: '🔊 Read Aloud', as: '🔊 পঢ়ি শুনাওক' },
-    'stop_reading': { en: '⏹ Stop', as: '⏹ বন্ধ কৰক' },
+    'read_aloud': { en: '🔊 Read Aloud', as: '🔊 পঢ়ুৱাওক' },
+    'stop_reading': { en: '⏹ Stop', as: '⏹ থামাওক' },
     // Footer
     'footer': { en: '🌾 Smart Farming Decision System © 2026 | AI + Satellite + Weather + Sensors | Hackathon Project', as: '🌾 স্মাৰ্ট কৃষি সিদ্ধান্ত ব্যৱস্থা © ২০২৬ | AI + উপগ্ৰহ + বতৰ + চেন্সৰ | হেকাথন প্ৰকল্প' },
     // Voice
     'speak_now': { en: '🎤 Listening... speak now', as: '🎤 শুনি আছোঁ... এতিয়া কওক' },
-    'voice_not_supported': { en: 'Voice input not supported in this browser', as: 'এই ব্ৰাউজাৰত ভইচ ইনপুট সমৰ্থিত নহয়' },
+    'voice_not_supported': { en: 'Voice input not supported in this browser', as: 'এই ব্ৰাউজাৰত মাইক সেৱা উপলব্ধ নহয়' },
 };
 
 function t(key) {
@@ -125,7 +139,9 @@ document.addEventListener('DOMContentLoaded', () => {
     setupThemeToggle();
     setupDiseaseUpload();
     setupForm();
+    setupAlternativeCrops();
     setupMandiPrices();
+    setupNews();
     setupDisasterEngine();
     setupChatbot();
     setupLanguageToggle();
@@ -326,14 +342,23 @@ function displayResults(data) {
 
 function displayCards(data) {
     document.getElementById('cropValue').textContent = data.crop.name;
-    document.getElementById('cropConfidence').textContent = `Confidence: ${data.crop.confidence}%`;
+    
+    const score = data.crop.display_confidence ?? data.crop.confidence;
+    const rawConfidence = data.crop.confidence;
+    const confEl = document.getElementById('cropConfidence');
+    if (data.crop.confidence_rating === 'Low') {
+        confEl.innerHTML = `<span style="color:#f59e0b;">Recommendation score: ${score}%</span><br><small style="color:var(--text-secondary)">Raw model probability: ${rawConfidence}%</small>`;
+    } else {
+        confEl.innerHTML = `Recommendation score: ${score}%<br><small style="color:var(--text-secondary)">Raw model probability: ${rawConfidence}%</small>`;
+    }
+    
     const topCropsHTML = data.crop.top_crops.map(c =>
-        `<div class="top-crop-item"><span>${c.name}</span><span style="font-family:var(--font-mono)">${c.probability}%</span></div>`
+        `<div class="top-crop-item"><span>${c.name}</span><span style="font-family:var(--font-mono)">${c.score ?? c.probability}%</span></div>`
     ).join('');
     document.getElementById('topCrops').innerHTML = topCropsHTML;
 
     document.getElementById('yieldValue').textContent = `${data.yield.value} t/ha`;
-    document.getElementById('priceValue').textContent = `₹${data.price.value.toLocaleString()}`;
+    document.getElementById('priceValue').textContent = `₹${data.price.value.toLocaleString()}/q`;
     document.getElementById('mspInfo').innerHTML = `MSP: ₹${data.price.msp.toLocaleString()}/q`;
     document.getElementById('profitValue').textContent = `₹${data.profit.value.toLocaleString()}`;
 }
@@ -561,7 +586,7 @@ function displayCharts(data) {
         currentCharts.crop = new Chart(document.getElementById('cropChart'), {
             type: 'bar', data: {
                 labels: crops.map(c => c.name),
-                datasets: [{ label: 'Probability %', data: crops.map(c => c.probability),
+                datasets: [{ label: 'Recommendation Score', data: crops.map(c => c.score ?? c.probability),
                     backgroundColor: ['rgba(34,197,94,.6)', 'rgba(59,130,246,.5)', 'rgba(245,158,11,.4)'],
                     borderColor: ['#22c55e', '#3b82f6', '#f59e0b'], borderWidth: 1, borderRadius: 6, barPercentage: 0.6 }]
             }, options: { ...defaults, indexAxis: 'y' }
@@ -614,9 +639,11 @@ function displayCharts(data) {
 
 // ━━━ REPORT ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function displayReport(data) {
+    const score = data.crop.display_confidence ?? data.crop.confidence;
     const rows = [
         ['🌾', 'Recommended Crop', data.crop.name],
-        ['📊', 'Confidence', `${data.crop.confidence}%`],
+        ['📊', 'Recommendation Score', `${score}%`],
+        ['🧮', 'Raw Model Probability', `${data.crop.confidence}%`],
         ['📈', 'Yield Prediction', `${data.yield.value} ${data.yield.unit}`],
         ['💰', 'Market Price', `₹${data.price.value.toLocaleString()}/quintal`],
         ['📌', 'MSP', `₹${data.price.msp.toLocaleString()}/quintal`],
@@ -645,7 +672,7 @@ function displayReport(data) {
         try {
             const reportData = {
                 crop: data.crop.name,
-                confidence: data.crop.confidence,
+                confidence: data.crop.display_confidence ?? data.crop.confidence,
                 yield: data.yield.value,
                 price: data.price.value,
                 msp: data.price.msp,
@@ -682,7 +709,98 @@ function displayReport(data) {
     };
 }
 
-// ━━━ DISEASE DETECTION ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ━━━ ALTERNATIVE CROPS RECOMMENDATION ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function setupAlternativeCrops() {
+    const altBtn = document.getElementById('altCropsBtn');
+    const modal = document.getElementById('altCropsModal');
+    const closeBtn = document.getElementById('closeAltCrops');
+    
+    if (altBtn) altBtn.addEventListener('click', showAlternativeCrops);
+    if (closeBtn) closeBtn.addEventListener('click', () => modal.classList.add('hidden'));
+    
+    // Close modal when clicking outside
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) modal.classList.add('hidden');
+    });
+}
+
+async function showAlternativeCrops() {
+    if (!lastPredictionData) {
+        alert('Run a prediction first to see alternatives');
+        return;
+    }
+    
+    const modal = document.getElementById('altCropsModal');
+    const list = document.getElementById('alternativesList');
+    const mainCrop = lastPredictionData.crop?.name || '';
+    
+    modal.classList.remove('hidden');
+    list.innerHTML = '<p class="loading">⏳ Loading alternatives...</p>';
+    
+    try {
+        const inputs = lastPredictionData.inputs || {};
+        const resp = await fetch('/api/alternative-crops', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                temperature: inputs.temperature || 25,
+                humidity: inputs.humidity || 60,
+                rainfall: inputs.rainfall || 100,
+                ph: inputs.ph || 6.5,
+                N: inputs.N || 60,
+                P: inputs.P || 40,
+                K: inputs.K || 40,
+                season: inputs.season || 'Kharif',
+                exclude: mainCrop
+            })
+        });
+        
+        const data = await resp.json();
+        
+        if (!data.success || !data.alternatives || data.alternatives.length === 0) {
+            list.innerHTML = '<p style="color: var(--text-muted);">No alternatives found</p>';
+            return;
+        }
+        
+        let html = '';
+        data.alternatives.forEach((alt, idx) => {
+            const confNum = parseFloat(alt.confidence);
+            const confClass = confNum >= 70 ? 'confidence-high' : confNum >= 50 ? 'confidence-medium' : 'confidence-low';
+            
+            html += `
+                <div class="alt-crop-card">
+                    <div class="alt-crop-name">${idx + 1}. ${alt.crop} <span class="${confClass}">${alt.confidence}</span></div>
+                    <div class="alt-crop-stats">
+                        <div class="stat-item">
+                            <div class="stat-label">Suitability</div>
+                            <div class="stat-value">${alt.suitability_score}</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Est. Yield</div>
+                            <div class="stat-value">${alt.estimated_yield}</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Market Price</div>
+                            <div class="stat-value">${alt.market_price}</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Est. Profit</div>
+                            <div class="stat-value">${alt.estimated_profit}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        list.innerHTML = html;
+        console.log(`✅ Showing ${data.alternatives.length} alternative crops`);
+        
+    } catch (e) {
+        list.innerHTML = `<p style="color: var(--accent-4);">⚠️ Error: ${e.message}</p>`;
+    }
+}
+
+
 function setupDiseaseUpload() {
     const zone = document.getElementById('uploadZone');
     const input = document.getElementById('diseaseImageInput');
@@ -835,6 +953,177 @@ async function fetchMandiPrices() {
     } finally {
         btn.textContent = '🔍 Fetch Prices';
         btn.disabled = false;
+    }
+}
+
+// ━━━ AGRICULTURAL NEWS & SUBSIDIES ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+let newsAutoRefreshInterval = null;
+let currentNewsType = "agriculture";
+
+function setupNews() {
+    // Setup filter buttons
+    document.querySelectorAll('.news-filter-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.news-filter-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentNewsType = btn.dataset.type;
+            fetchSmartNews();
+        });
+    });
+    
+    // Setup search button
+    document.getElementById('newsSearchBtn').addEventListener('click', searchNews);
+    document.getElementById('newsSearchInput').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') searchNews();
+    });
+    
+    // Setup auto-refresh toggle
+    document.getElementById('autoRefreshNews').addEventListener('change', (e) => {
+        if (e.target.checked) {
+            startNewsAutoRefresh();
+        } else {
+            stopNewsAutoRefresh();
+        }
+    });
+    
+    // Initial fetch
+    fetchSmartNews();
+}
+
+async function fetchSmartNews() {
+    const feedEl = document.getElementById('newsFeed');
+    feedEl.innerHTML = '<p class="news-loading">📡 Loading farming news...</p>';
+    
+    try {
+        const resp = await fetch(`/api/news?type=${currentNewsType}&limit=12`, {
+            method: 'GET'
+        });
+        
+        const data = await resp.json();
+        
+        if (!data.success) {
+            feedEl.innerHTML = `<p class="news-error">⚠️ ${data.error || 'Error fetching news'}</p>`;
+            return;
+        }
+        
+        if (!data.articles || data.articles.length === 0) {
+            feedEl.innerHTML = '<p class="news-hint">📰 No news found for this category. Try another filter.</p>';
+            return;
+        }
+        
+        // Display news cards
+        let html = '';
+        data.articles.forEach((article, idx) => {
+            const isBreaking = idx === 0;  // First article is "breaking"
+            const date = new Date(article.date).toLocaleDateString('en-IN', {
+                month: 'short',
+                day: 'numeric'
+            });
+            
+            html += `
+                <div class="news-card ${isBreaking ? 'news-breaking' : ''}">
+                    ${article.image ? `<img src="${article.image}" alt="${article.title}" class="news-card-image" onerror="this.classList.add('placeholder');this.textContent='📰'">` : '<div class="news-card-image placeholder">📰</div>'}
+                    <div class="news-card-content">
+                        <h3 class="news-card-title">${article.title}</h3>
+                        <p class="news-card-description">${article.description}</p>
+                        <div class="news-card-meta">
+                            <span class="news-card-source">${article.source}</span>
+                            <span class="news-card-date">${date}</span>
+                        </div>
+                        <a href="${article.link}" target="_blank" class="news-card-link">Read More →</a>
+                    </div>
+                </div>
+            `;
+        });
+        
+        feedEl.innerHTML = html;
+        console.log(`✅ Loaded ${data.articles.length} ${currentNewsType} articles`);
+        
+    } catch (e) {
+        feedEl.innerHTML = `<p class="news-error">⚠️ Network error: ${e.message}</p>`;
+    }
+}
+
+async function searchNews() {
+    const searchTerm = document.getElementById('newsSearchInput').value.trim();
+    if (!searchTerm) {
+        fetchSmartNews();
+        return;
+    }
+    
+    const feedEl = document.getElementById('newsFeed');
+    feedEl.innerHTML = '<p class="news-loading">🔍 Searching...</p>';
+    
+    try {
+        // For custom search, we'll fetch all and filter client-side
+        const resp = await fetch(`/api/news?type=all&limit=50`, { method: 'GET' });
+        const data = await resp.json();
+        
+        if (!data.success || !data.articles) {
+            feedEl.innerHTML = '<p class="news-error">⚠️ Search failed</p>';
+            return;
+        }
+        
+        // Filter articles by search term
+        const filtered = data.articles.filter(article => 
+            article.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            article.description.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+        
+        if (filtered.length === 0) {
+            feedEl.innerHTML = `<p class="news-hint">📰 No results for "${searchTerm}"</p>`;
+            return;
+        }
+        
+        // Display results
+        let html = '';
+        filtered.slice(0, 12).forEach(article => {
+            const date = new Date(article.date).toLocaleDateString('en-IN', {
+                month: 'short',
+                day: 'numeric'
+            });
+            
+            html += `
+                <div class="news-card">
+                    ${article.image ? `<img src="${article.image}" alt="${article.title}" class="news-card-image" onerror="this.classList.add('placeholder');this.textContent='📰'">` : '<div class="news-card-image placeholder">📰</div>'}
+                    <div class="news-card-content">
+                        <h3 class="news-card-title">${article.title}</h3>
+                        <p class="news-card-description">${article.description}</p>
+                        <div class="news-card-meta">
+                            <span class="news-card-source">${article.source}</span>
+                            <span class="news-card-date">${date}</span>
+                        </div>
+                        <a href="${article.link}" target="_blank" class="news-card-link">Read More →</a>
+                    </div>
+                </div>
+            `;
+        });
+        
+        feedEl.innerHTML = html;
+        console.log(`✅ Found ${filtered.length} matching articles`);
+        
+    } catch (e) {
+        feedEl.innerHTML = `<p class="news-error">⚠️ Error: ${e.message}</p>`;
+    }
+}
+
+function startNewsAutoRefresh() {
+    if (newsAutoRefreshInterval) clearInterval(newsAutoRefreshInterval);
+    
+    // Refresh every 10 minutes
+    newsAutoRefreshInterval = setInterval(() => {
+        console.log("🔄 Auto-refreshing news...");
+        fetchSmartNews();
+    }, 10 * 60 * 1000);
+    
+    console.log("✅ News auto-refresh enabled (every 10 min)");
+}
+
+function stopNewsAutoRefresh() {
+    if (newsAutoRefreshInterval) {
+        clearInterval(newsAutoRefreshInterval);
+        newsAutoRefreshInterval = null;
+        console.log("⏹ News auto-refresh disabled");
     }
 }
 
@@ -1212,17 +1501,28 @@ function applyLanguage() {
 // ━━━ VOICE INPUT ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function setupVoiceInput() {
     const voiceBtn = document.getElementById('voiceBtn');
-    if (!voiceBtn) return;
-
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-        voiceBtn.title = t('voice_not_supported');
-        voiceBtn.style.opacity = '0.4';
-        voiceBtn.style.cursor = 'not-allowed';
+    if (!voiceBtn) {
+        console.warn('Voice button not found in DOM');
         return;
     }
 
-    voiceBtn.addEventListener('click', () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+        voiceBtn.setAttribute('title', t('voice_not_supported'));
+        voiceBtn.style.opacity = '0.4';
+        voiceBtn.style.cursor = 'not-allowed';
+        voiceBtn.disabled = true;
+        return;
+    }
+
+    // Ensure button is enabled and has proper cursor
+    voiceBtn.style.opacity = '1';
+    voiceBtn.style.cursor = 'pointer';
+    voiceBtn.disabled = false;
+
+    voiceBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
         if (isRecording) {
             stopVoice();
         } else {
@@ -1233,49 +1533,74 @@ function setupVoiceInput() {
 
 function startVoice() {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    speechRecognition = new SpeechRecognition();
-    speechRecognition.continuous = false;
-    speechRecognition.interimResults = true;
-    // Use Assamese locale if in Assamese mode, fallback to Bengali (closest supported), then English
-    speechRecognition.lang = currentLang === 'as' ? 'as-IN' : 'en-IN';
+    if (!SpeechRecognition) {
+        alert('Voice input not supported in your browser');
+        return;
+    }
 
-    const voiceBtn = document.getElementById('voiceBtn');
-    const voiceIcon = document.getElementById('voiceIcon');
-    const chatInput = document.getElementById('chatInput');
+    try {
+        speechRecognition = new SpeechRecognition();
+        speechRecognition.continuous = false;
+        speechRecognition.interimResults = true;
+        
+        // Try to use appropriate locale for speech recognition
+        // Most browsers don't support 'as-IN', so we'll use 'en-IN' for Assamese with fallback
+        speechRecognition.lang = currentLang === 'as' ? 'en-IN' : 'en-IN';
 
-    voiceBtn.classList.add('recording');
-    voiceIcon.textContent = '⏹';
-    chatInput.placeholder = t('speak_now');
-    isRecording = true;
+        const voiceBtn = document.getElementById('voiceBtn');
+        const voiceIcon = document.getElementById('voiceIcon');
+        const chatInput = document.getElementById('chatInput');
 
-    speechRecognition.onresult = (event) => {
-        let transcript = '';
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-            transcript += event.results[i][0].transcript;
-        }
-        chatInput.value = transcript;
-    };
+        if (voiceBtn) voiceBtn.classList.add('recording');
+        if (voiceIcon) voiceIcon.textContent = '⏹';
+        if (chatInput) chatInput.placeholder = t('speak_now');
+        isRecording = true;
 
-    speechRecognition.onerror = (event) => {
-        console.error('Speech recognition error:', event.error);
-        // If as-IN not supported, try bn-IN (Bengali - closest to Assamese)
-        if (event.error === 'language-not-supported' && currentLang === 'as') {
-            speechRecognition.lang = 'bn-IN';
-            speechRecognition.start();
-            return;
-        }
+        speechRecognition.onstart = () => {
+            console.log('🎤 Speech recognition started');
+        };
+
+        speechRecognition.onresult = (event) => {
+            let transcript = '';
+            for (let i = event.resultIndex; i < event.results.length; i++) {
+                const isFinal = event.results[i].isFinal;
+                transcript += event.results[i][0].transcript;
+                if (isFinal) {
+                    console.log('📝 Recognized text:', transcript);
+                }
+            }
+            if (transcript && chatInput) chatInput.value = transcript;
+        };
+
+        speechRecognition.onerror = (event) => {
+            console.error('❌ Speech recognition error:', event.error);
+            stopVoice();
+            
+            // Show user-friendly error message
+            let errorMsg = 'Microphone error. Please try again.';
+            if (event.error === 'network-error') errorMsg = 'Network error. Check your connection.';
+            if (event.error === 'no-speech') errorMsg = 'No speech detected. Please try again.';
+            if (event.error === 'audio-capture') errorMsg = 'Microphone not accessible. Check permissions.';
+            
+            if (chatInput) chatInput.placeholder = errorMsg;
+        };
+
+        speechRecognition.onend = () => {
+            console.log('🎤 Speech recognition ended');
+            stopVoice();
+            // Auto-send if we got a transcript
+            const chatInput = document.getElementById('chatInput');
+            if (chatInput && chatInput.value.trim()) {
+                // Add a small delay to ensure UI updates
+                setTimeout(() => sendChatMessage(), 100);
+            }
+        };
+
+        speechRecognition.start();
+    } catch (error) {
+        console.error('Failed to initialize speech recognition:', error);
         stopVoice();
-    };
-
-    speechRecognition.onend = () => {
-        stopVoice();
-        // Auto-send if we got a transcript
-        if (chatInput.value.trim()) {
-            sendChatMessage();
-        }
-    };
-
-    speechRecognition.start();
+    }
 }
 
 function stopVoice() {
@@ -1293,6 +1618,11 @@ function stopVoice() {
 
 // ━━━ READ ALOUD (TTS) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function readAloud(btn, msgId) {
+    if (!window.speechSynthesis) {
+        alert('Text-to-speech not supported in this browser');
+        return;
+    }
+
     if (window.speechSynthesis.speaking) {
         window.speechSynthesis.cancel();
         btn.classList.remove('speaking');
@@ -1314,29 +1644,60 @@ function readAloud(btn, msgId) {
         }
     });
 
-    if (!textToRead.trim()) return;
+    if (!textToRead.trim()) {
+        console.warn('No text content to read');
+        return;
+    }
 
     const utterance = new SpeechSynthesisUtterance(textToRead);
-    // Set language for TTS
-    utterance.lang = currentLang === 'as' ? 'as-IN' : 'en-IN';
-    // Try to find Assamese or Bengali voice
-    const voices = window.speechSynthesis.getVoices();
+    
+    // Set language and voice based on current language
     if (currentLang === 'as') {
-        const asVoice = voices.find(v => v.lang.startsWith('as')) ||
-                        voices.find(v => v.lang.startsWith('bn')) ||
-                        voices.find(v => v.lang.includes('IN'));
-        if (asVoice) utterance.voice = asVoice;
+        utterance.lang = 'en-IN';  // Use English Indian for Assamese (better support)
+    } else {
+        utterance.lang = 'en-IN';
     }
-    utterance.rate = 0.9;
+    
+    // Try to find a suitable voice
+    const voices = window.speechSynthesis.getVoices();
+    console.log('Available voices:', voices.length, voices.map(v => v.name).slice(0, 5));
+    
+    if (currentLang === 'as') {
+        // For Assamese: try to find India-based voice that can handle regional content
+        const preferredVoice = voices.find(v => v.lang.startsWith('en') && v.lang.includes('IN')) ||
+                               voices.find(v => v.lang.startsWith('en') && v.name.toLowerCase().includes('female')) ||
+                               voices.find(v => v.lang.startsWith('en'));
+        if (preferredVoice) {
+            utterance.voice = preferredVoice;
+            console.log('Using voice:', preferredVoice.name);
+        }
+    } else {
+        // For English: use Indian English voice if available
+        const enVoice = voices.find(v => v.lang.includes('IN')) ||
+                        voices.find(v => v.lang.startsWith('en'));
+        if (enVoice) utterance.voice = enVoice;
+    }
+    
+    // Adjust speech parameters for better readability
+    utterance.rate = 0.85;    // Slightly slower for clarity
+    utterance.pitch = 1.0;
+    utterance.volume = 1.0;
 
     btn.classList.add('speaking');
     btn.textContent = t('stop_reading');
 
+    utterance.onstart = () => {
+        console.log('🔊 Started reading aloud');
+    };
+
     utterance.onend = () => {
+        console.log('🔊 Finished reading');
         btn.classList.remove('speaking');
         btn.textContent = t('read_aloud');
     };
-    utterance.onerror = () => {
+
+    utterance.onerror = (event) => {
+        console.error('❌ Speech synthesis error:', event.error);
         btn.classList.remove('speaking');
         btn.textContent = t('read_aloud');
     };

@@ -244,7 +244,7 @@
 
                 <!-- Result Cards -->
                 <section class="results-grid" id="resultsGrid">
-                    <div class="result-card crop-card"><div class="card-header"><span class="card-icon">🌾</span><h3>Recommended Crop</h3></div><div class="card-value" id="cropValue">—</div><div class="card-detail" id="cropConfidence">Confidence: —</div><div class="card-extra" id="topCrops"></div></div>
+                    <div class="result-card crop-card"><div class="card-header"><span class="card-icon">🌾</span><h3>Recommended Crop</h3><button class="btn-alternatives" id="altCropsBtn" title="Show alternative crops if you don't want this one">🔄 Alternatives</button></div><div class="card-value" id="cropValue">—</div><div class="card-detail" id="cropConfidence">Confidence: —</div><div class="card-extra" id="topCrops"></div></div>
                     <div class="result-card yield-card"><div class="card-header"><span class="card-icon">📈</span><h3>Yield Prediction</h3></div><div class="card-value" id="yieldValue">—</div><div class="card-detail" id="yieldUnit">tons/hectare</div></div>
                     <div class="result-card price-card"><div class="card-header"><span class="card-icon">💰</span><h3>Market Price</h3></div><div class="card-value" id="priceValue">—</div><div class="card-detail" id="priceUnit">₹/quintal</div><div class="card-extra" id="mspInfo"></div></div>
                     <div class="result-card profit-card"><div class="card-header"><span class="card-icon">🤑</span><h3>Expected Profit</h3></div><div class="card-value" id="profitValue">—</div><div class="card-detail" id="profitUnit">₹/hectare</div></div>
@@ -253,6 +253,25 @@
                 </section>
 
                 <!-- Alert Banners -->
+                <section class="alerts-section" id="alertsSection"></section>
+
+                <!-- Alternative Crops Modal -->
+                <div class="modal hidden" id="altCropsModal">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h2>🌾 Alternative Crop Recommendations</h2>
+                            <button class="modal-close" id="closeAltCrops">✕</button>
+                        </div>
+                        <div class="modal-body">
+                            <p class="modal-intro">If you don't want to grow the recommended crop, here are other suitable options based on your soil and climate conditions:</p>
+                            <div class="alternatives-list" id="alternativesList">
+                                <p class="loading">⏳ Loading alternatives...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Alert Banners (original) -->
                 <section class="alerts-section" id="alertsSection"></section>
 
                 <!-- Risk Breakdown -->
@@ -374,6 +393,55 @@
                             <input type="text" id="chatInput" placeholder="Ask about crop suitability, techniques, schemes..." class="chat-text-input" data-i18n-placeholder="chat_placeholder">
                             <button class="btn-chat-send" id="chatSendBtn">➤</button>
                         </div>
+                    </div>
+                </section>
+
+                <!-- Agricultural News & Subsidies -->
+                <section class="news-section" id="newsSection">
+                    <div class="section-header">
+                        <h2>📰 Smart Farming News</h2>
+                        <span class="news-badge">The News API</span>
+                    </div>
+                    
+                    <!-- News Filters -->
+                    <div class="news-filters">
+                        <button class="news-filter-btn active" data-type="agriculture">
+                            <span>🌾</span> Agriculture
+                        </button>
+                        <button class="news-filter-btn" data-type="weather">
+                            <span>🌦️</span> Weather
+                        </button>
+                        <button class="news-filter-btn" data-type="prices">
+                            <span>💰</span> Market Prices
+                        </button>
+                        <button class="news-filter-btn" data-type="technology">
+                            <span>🤖</span> Technology
+                        </button>
+                        <button class="news-filter-btn" data-type="assam">
+                            <span>🏞️</span> Assam Farming
+                        </button>
+                        <button class="news-filter-btn" data-type="all">
+                            <span>📰</span> All News
+                        </button>
+                    </div>
+                    
+                    <!-- News Search -->
+                    <div class="news-search-bar">
+                        <input type="text" id="newsSearchInput" placeholder="🔍 Search farming news..." class="news-search-input">
+                        <button class="btn-news-search" id="newsSearchBtn">Search</button>
+                    </div>
+                    
+                    <!-- Auto-refresh toggle -->
+                    <div class="news-controls">
+                        <label class="auto-refresh-toggle">
+                            <input type="checkbox" id="autoRefreshNews" checked>
+                            <span>🔄 Auto-refresh every 10 min</span>
+                        </label>
+                    </div>
+                    
+                    <!-- News Feed -->
+                    <div class="news-feed" id="newsFeed">
+                        <p class="news-hint">📡 Select a filter to load farming news...</p>
                     </div>
                 </section>
 
