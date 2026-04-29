@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Smart Farming - Farm Dashboard">
+    <title>🌾 Smart Farming - Farm Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        .dashboard-container { max-width: 1400px; margin: 0 auto; }
+        .dashboard-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px; }
+        .dashboard-header h1 { font-size: 1.8rem; }
+        .btn-logout { padding: 10px 20px; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: #fff; border: none; border-radius: 8px; cursor: pointer; transition: all 0.3s; }
+        .btn-logout:hover { transform: translateY(-2px); }
+
+        .farm-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-bottom: 32px; }
+        .summary-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 20px; }
+        .summary-label { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 8px; }
+        .summary-value { font-size: 2rem; font-weight: 800; background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+
+        .crops-section { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 24px; margin-bottom: 32px; }
+        .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+        .section-header h2 { font-size: 1.4rem; }
+        .btn-add-crop { padding: 10px 20px; background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); color: #fff; border: none; border-radius: 8px; cursor: pointer; transition: all 0.3s; }
+        .btn-add-crop:hover { transform: translateY(-2px); }
+
+        .crops-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+        .crop-card { background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 12px; padding: 16px; transition: all 0.3s; }
+        .crop-card:hover { border-color: var(--text-accent); transform: translateY(-2px); }
+        .crop-name { font-size: 1.2rem; font-weight: 700; margin-bottom: 12px; }
+        .crop-info { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; font-size: 0.85rem; }
+        .crop-info-item { }
+        .crop-info-label { color: var(--text-muted); font-size: 0.75rem; }
+        .crop-info-value { color: var(--text-primary); font-weight: 600; }
+        .crop-status { display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; }
+        .crop-status.growing { background: rgba(34, 197, 94, 0.2); color: #22c55e; }
+        .crop-status.harvesting { background: rgba(245, 158, 11, 0.2); color: #f59e0b; }
+        .crop-status.harvested { background: rgba(156, 163, 175, 0.2); color: #9ca3af; }
+        .crop-status.added { background: rgba(59, 130, 246, 0.2); color: #3b82f6; }
+
+        .crop-actions { display: flex; gap: 8px; margin-top: 12px; }
+        .btn-crop { flex: 1; padding: 8px 12px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 6px; cursor: pointer; transition: all 0.3s; font-size: 0.85rem; }
+        .btn-crop:hover { background: var(--bg-input); }
+        .btn-analyze { background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: #fff; }
+        .btn-delete { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: #fff; }
+
+        .empty-state { text-align: center; padding: 48px 24px; color: var(--text-muted); }
+        .empty-icon { font-size: 48px; margin-bottom: 16px; }
+
+        .modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.7); z-index: 1000; align-items: center; justify-content: center; }
+        .modal.show { display: flex; }
+        .modal-content { background: var(--bg-card); border-radius: 12px; padding: 32px; max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+        .modal-header h2 { font-size: 1.4rem; }
+        .modal-close { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted); }
+
+        .form-group { margin-bottom: 16px; }
+        .form-label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 8px; color: var(--text-secondary); }
+        .form-input { width: 100%; padding: 10px 12px; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-primary); font-size: 0.9rem; }
+        .form-input:focus { outline: none; border-color: var(--text-accent); }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+        .btn-submit { width: 100%; padding: 12px; background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); color: #fff; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; transition: all 0.3s; }
+        .btn-submit:hover { transform: translateY(-2px); }
+
+        .analysis-result { background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 12px; padding: 24px; margin-top: 24px; }
+        .analysis-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 16px; }
+        .analysis-item { background: var(--bg-card); padding: 12px; border-radius: 8px; }
+        .analysis-label { font-size: 0.75rem; color: var(--text-muted); }
+        .analysis-value { font-size: 1.4rem; font-weight: 700; color: var(--text-accent); }
+    </style>
+</head>
+<body>
+    <!-- HEADER -->
+    <header class="app-header">
+        <div class="header-left">
+            <div class="logo">
+                <span class="logo-icon">🌾</span>
+                <div class="logo-text">
+                    <h1>Smart Farming</h1>
+                    <span class="logo-subtitle">Farm Management Dashboard</span>
+                </div>
+            </div>
+        </div>
+        <div class="header-right">
+            <button class="theme-toggle" id="themeToggle">🌙</button>
+            <button class="btn-logout" id="logoutBtn">🚪 Logout</button>
+        </div>
+    </header>
+
+    <main class="app-layout" style="display: block; padding: 40px 20px;">
+        <div class="dashboard-container">
+            <!-- Dashboard Header -->
+            <div class="dashboard-header">
+                <div>
+                    <h1 id="farmerName">Farmer's Farm</h1>
+                    <p id="farmLocation" style="color: var(--text-muted); font-size: 0.9rem; margin-top: 4px;">📍 Loading...</p>
+                </div>
+                <button class="btn-logout" id="analyzeBtn" style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);">📊 Analyze & Get Advisory</button>
+            </div>
+
+            <!-- Farm Summary -->
+            <div class="farm-summary">
+                <div class="summary-card">
+                    <div class="summary-label">Total Land</div>
+                    <div class="summary-value" id="totalLand">—</div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">hectares</div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-label">Active Crops</div>
+                    <div class="summary-value" id="activeCrops">—</div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">currently growing</div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-label">Land Utilized</div>
+                    <div class="summary-value" id="landUtilized">—</div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">hectares</div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-label">Available Land</div>
+                    <div class="summary-value" id="availableLand">—</div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">hectares</div>
+                </div>
+            </div>
+
+            <!-- Crops Section -->
+            <div class="crops-section">
+                <div class="section-header">
+                    <h2>🌾 Your Crops</h2>
+                    <button class="btn-add-crop" id="addCropBtn">➕ Add New Crop</button>
+                </div>
+
+                <div class="crops-grid" id="cropsGrid">
+                    <div class="empty-state">
+                        <div class="empty-icon">🌱</div>
+                        <p>Loading your crops...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Add Crop Modal -->
+    <div class="modal" id="addCropModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>➕ Add New Crop</h2>
+                <button class="modal-close" id="closeAddCropModal">✕</button>
+            </div>
+            <form id="addCropForm">
+                <div class="form-group">
+                    <label class="form-label">Crop Name</label>
+                    <input type="text" class="form-input" id="cropName" placeholder="e.g., Rice, Wheat, Maize" required>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Area (hectares)</label>
+                        <input type="number" class="form-input" id="cropArea" placeholder="0.5" step="0.1" min="0.1" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Soil pH</label>
+                        <input type="number" class="form-input" id="cropPh" placeholder="6.5" step="0.1" min="0" max="14" required>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Planting Date</label>
+                        <input type="date" class="form-input" id="cropPlantingDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Expected Harvest</label>
+                        <input type="date" class="form-input" id="cropHarvestDate" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Soil Nutrients</label>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Nitrogen (kg/ha)</label>
+                        <input type="number" class="form-input" id="cropN" placeholder="80" min="0" max="500" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Phosphorus (kg/ha)</label>
+                        <input type="number" class="form-input" id="cropP" placeholder="45" min="0" max="300" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Potassium (kg/ha)</label>
+                    <input type="number" class="form-input" id="cropK" placeholder="40" min="0" max="300" required>
+                </div>
+
+                <button type="submit" class="btn-submit">✅ Add Crop</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Crop Analysis Modal -->
+    <div class="modal" id="analysisModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>📊 Crop Analysis</h2>
+                <button class="modal-close" id="closeAnalysisModal">✕</button>
+            </div>
+            <div id="analysisContent" style="max-height: 60vh; overflow-y: auto;">
+                <p style="text-align: center; color: var(--text-muted);">Loading analysis...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Theme Toggle
+        const themeToggle = document.getElementById('themeToggle');
+        const html = document.documentElement;
+        const savedTheme = localStorage.getItem('theme') || 'dark';
+        html.setAttribute('data-theme', savedTheme);
+        updateThemeIcon();
+
+        themeToggle.addEventListener('click', () => {
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            updateThemeIcon();
+        });
+
+        function updateThemeIcon() {
+            const theme = html.getAttribute('data-theme');
+            themeToggle.textContent = theme === 'dark' ? '☀️' : '🌙';
+        }
+
+        // Logout
+        document.getElementById('logoutBtn').addEventListener('click', async () => {
+            await fetch('/api/logout', { method: 'POST' });
+            window.location.href = '/login';
+        });
+
+        // Load Farm Data
+        async function loadFarmData() {
+            try {
+                const response = await fetch('/api/farm/info');
+                if (response.status === 401) {
+                    window.location.href = '/login';
+                    return;
+                }
+                const data = await response.json();
+                
+                // Update header
+                document.getElementById('farmerName').textContent = `${data.farmer.farmer_name}'s Farm`;
+                document.getElementById('farmLocation').textContent = `📍 ${data.farmer.village}, ${data.farmer.district}, ${data.farmer.state}`;
+
+                // Update summary
+                document.getElementById('totalLand').textContent = data.farm.total_land.toFixed(1);
+                const activeCrops = data.farm.crops.filter(c => c.status !== 'Harvested').length;
+                document.getElementById('activeCrops').textContent = activeCrops;
+                
+                const utilizeLand = data.farm.crops.reduce((sum, c) => sum + c.area, 0);
+                document.getElementById('landUtilized').textContent = utilizeLand.toFixed(2);
+                document.getElementById('availableLand').textContent = (data.farm.total_land - utilizeLand).toFixed(2);
+
+                // Render crops
+                renderCrops(data.farm.crops, data.farm.total_land);
+            } catch (error) {
+                console.error('Error loading farm data:', error);
+            }
+        }
+
+        function renderCrops(crops, totalLand) {
+            const grid = document.getElementById('cropsGrid');
+            
+            if (crops.length === 0) {
+                grid.innerHTML = '<div class="empty-state" style="grid-column: 1/-1;"><div class="empty-icon">🌱</div><p>No crops added yet. Click "Add New Crop" to get started!</p></div>';
+                return;
+            }
+
+            grid.innerHTML = crops.map(crop => `
+                <div class="crop-card">
+                    <div class="crop-name">${crop.name}</div>
+                    <div class="crop-status ${crop.status.toLowerCase().replace(' ', '-')}">${crop.status}</div>
+                    
+                    <div class="crop-info">
+                        <div class="crop-info-item">
+                            <div class="crop-info-label">Area</div>
+                            <div class="crop-info-value">${crop.area} ha</div>
+                        </div>
+                        <div class="crop-info-item">
+                            <div class="crop-info-label">Soil pH</div>
+                            <div class="crop-info-value">${crop.soil_ph}</div>
+                        </div>
+                        <div class="crop-info-item">
+                            <div class="crop-info-label">Nitrogen</div>
+                            <div class="crop-info-value">${crop.nitrogen} kg/ha</div>
+                        </div>
+                        <div class="crop-info-item">
+                            <div class="crop-info-label">Phosphorus</div>
+                            <div class="crop-info-value">${crop.phosphorus} kg/ha</div>
+                        </div>
+                        <div class="crop-info-item">
+                            <div class="crop-info-label">Potassium</div>
+                            <div class="crop-info-value">${crop.potassium} kg/ha</div>
+                        </div>
+                        <div class="crop-info-item">
+                            <div class="crop-info-label">Planted</div>
+                            <div class="crop-info-value">${crop.planting_date}</div>
+                        </div>
+                    </div>
+
+                    <div class="crop-actions">
+                        <button class="btn-crop btn-analyze" onclick="analyzeCrop('${crop.id}', '${crop.name}')">📊 Analyze</button>
+                        <button class="btn-crop btn-delete" onclick="deleteCrop('${crop.id}')">🗑️ Delete</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Add Crop Modal
+        document.getElementById('addCropBtn').addEventListener('click', () => {
+            document.getElementById('addCropModal').classList.add('show');
+        });
+
+        document.getElementById('closeAddCropModal').addEventListener('click', () => {
+            document.getElementById('addCropModal').classList.remove('show');
+        });
+
+        document.getElementById('addCropForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const cropData = {
+                name: document.getElementById('cropName').value,
+                area: parseFloat(document.getElementById('cropArea').value),
+                planting_date: document.getElementById('cropPlantingDate').value,
+                expected_harvest: document.getElementById('cropHarvestDate').value,
+                nitrogen: parseFloat(document.getElementById('cropN').value),
+                phosphorus: parseFloat(document.getElementById('cropP').value),
+                potassium: parseFloat(document.getElementById('cropK').value),
+                soil_ph: parseFloat(document.getElementById('cropPh').value)
+            };
+
+            try {
+                const response = await fetch('/api/farm/crop/add', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(cropData)
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    alert('✅ ' + result.message);
+                    document.getElementById('addCropForm').reset();
+                    document.getElementById('addCropModal').classList.remove('show');
+                    loadFarmData();
+                } else {
+                    alert('❌ ' + result.error);
+                }
+            } catch (error) {
+                console.error('Error adding crop:', error);
+                alert('Error adding crop');
+            }
+        });
+
+        // Delete Crop
+        async function deleteCrop(cropId) {
+            if (!confirm('Are you sure you want to delete this crop?')) return;
+
+            try {
+                const response = await fetch(`/api/farm/crop/${cropId}/delete`, { method: 'DELETE' });
+                const result = await response.json();
+
+                if (response.ok) {
+                    alert('✅ ' + result.message);
+                    loadFarmData();
+                }
+            } catch (error) {
+                console.error('Error deleting crop:', error);
+            }
+        }
+
+        // Analyze Crop
+        async function analyzeCrop(cropId, cropName) {
+            document.getElementById('analysisModal').classList.add('show');
+            document.getElementById('analysisContent').innerHTML = '<p style="text-align: center; color: var(--text-muted);">Analyzing ' + cropName + '...</p>';
+
+            try {
+                const response = await fetch(`/api/farm/crop/${cropId}/analyze`, { method: 'POST' });
+                const data = await response.json();
+
+                renderAnalysis(data);
+            } catch (error) {
+                console.error('Error analyzing crop:', error);
+                document.getElementById('analysisContent').innerHTML = '<p style="color: red;">Error analyzing crop</p>';
+            }
+        }
+
+        function renderAnalysis(data) {
+            const crop = data.crop;
+            const analysis = data.analysis;
+
+            let html = `
+                <div class="analysis-result">
+                    <h3 style="margin-bottom: 16px;">🌾 ${crop.name}</h3>
+                    
+                    <div class="analysis-grid">
+                        <div class="analysis-item">
+                            <div class="analysis-label">Yield Prediction</div>
+                            <div class="analysis-value">${analysis.yield.tons_per_ha.toFixed(2)}</div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted);">tons/hectare</div>
+                        </div>
+                        <div class="analysis-item">
+                            <div class="analysis-label">Market Price</div>
+                            <div class="analysis-value">₹${analysis.pricing.price_per_quintal.toFixed(0)}</div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted);">per quintal</div>
+                        </div>
+                        <div class="analysis-item">
+                            <div class="analysis-label">Expected Profit</div>
+                            <div class="analysis-value">₹${(analysis.pricing.profit / 1000).toFixed(1)}K</div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted);">per hectare</div>
+                        </div>
+                    </div>
+
+                    <h4 style="margin: 16px 0 8px;">📡 Crop Health (NDVI)</h4>
+                    <p style="margin-bottom: 16px; color: var(--text-secondary);">
+                        <span style="display: inline-block; padding: 4px 8px; background: var(--bg-card); border-radius: 4px; margin-right: 8px;">
+                            NDVI: <strong>${analysis.satellite.ndvi}</strong>
+                        </span>
+                        <span style="display: inline-block; padding: 4px 8px; background: var(--bg-card); border-radius: 4px;">
+                            Status: <strong>${analysis.satellite.health}</strong>
+                        </span>
+                    </p>
+
+                    <h4 style="margin: 16px 0 8px;">🧠 AI Advisory</h4>
+                    ${analysis.advisory && analysis.advisory.advisories ? `
+                        <div style="margin-bottom: 12px;">
+                            ${analysis.advisory.advisories.map(adv => `
+                                <div style="background: var(--bg-card); padding: 10px; margin-bottom: 8px; border-radius: 6px; border-left: 3px solid ${adv.severity === 'critical' ? '#ef4444' : adv.severity === 'warning' ? '#f59e0b' : '#22c55e'};">
+                                    <strong>${adv.icon} ${adv.title}</strong>
+                                    <p style="margin: 4px 0 0; font-size: 0.9rem; color: var(--text-secondary);">${adv.message}</p>
+                                </div>
+                            `).join('')}
+                        </div>
+                        <p style="font-size: 0.9rem; background: var(--bg-card); padding: 10px; border-radius: 6px; margin-top: 12px;">
+                            <strong>Summary:</strong> ${analysis.advisory.overall_summary}
+                        </p>
+                    ` : '<p style="color: var(--text-muted);">Advisory not available</p>'}
+                </div>
+            `;
+
+            document.getElementById('analysisContent').innerHTML = html;
+        }
+
+        document.getElementById('closeAnalysisModal').addEventListener('click', () => {
+            document.getElementById('analysisModal').classList.remove('show');
+        });
+
+        // Initial load
+        loadFarmData();
+    </script>
+</body>
+</html>

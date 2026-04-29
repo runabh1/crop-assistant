@@ -15,10 +15,11 @@ import numpy as np
 import pandas as pd
 import joblib
 import requests as http_requests
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, send_from_directory, session
 from flask_cors import CORS
 from PIL import Image
 from dotenv import load_dotenv
+from functools import wraps
 
 # Fix Unicode encoding on Windows
 if sys.platform == "win32":
@@ -36,6 +37,7 @@ warnings.filterwarnings("ignore")
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 app = Flask(__name__, static_folder="static", template_folder="templates")
 CORS(app)
+app.secret_key = "smart_farming_secret_key_2024"  # For sessions
 
 PLANET_API_KEY = os.environ.get("PLANET_API_KEY", "")
 PLANET_API_URL = "https://api.planet.com/data/v1"
@@ -143,6 +145,68 @@ INPUT_DEFAULTS = {
     "Rainfall": 150.0,
 }
 
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# MOCK USER DATABASE & FARM DATA
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+MOCK_USERS = {
+    "abc@123": {
+        "password": "1234",
+        "farmer_name": "Ramesh Kumar",
+        "phone": "9876543210",
+        "state": "Maharashtra",
+        "district": "Nashik",
+        "village": "Nandgaon",
+        "latitude": 19.8967,
+        "longitude": 73.7754,
+        "total_land": 5.0,  # hectares
+        "land_type": "Irrigated"
+    }
+}
+
+FARM_DATA = {
+    "abc@123": {
+        "total_land": 5.0,
+        "crops": [
+            {
+                "id": "crop_1",
+                "name": "Sugarcane",
+                "area": 2.5,
+                "planting_date": "2024-01-15",
+                "expected_harvest": "2025-01-15",
+                "nitrogen": 100,
+                "phosphorus": 50,
+                "potassium": 60,
+                "soil_ph": 6.8,
+                "status": "Growing"
+            },
+            {
+                "id": "crop_2",
+                "name": "Wheat",
+                "area": 1.5,
+                "planting_date": "2024-10-01",
+                "expected_harvest": "2025-03-15",
+                "nitrogen": 120,
+                "phosphorus": 60,
+                "potassium": 40,
+                "soil_ph": 7.0,
+                "status": "Harvesting"
+            },
+            {
+                "id": "crop_3",
+                "name": "Maize",
+                "area": 1.0,
+                "planting_date": "2024-04-01",
+                "expected_harvest": "2024-09-15",
+                "nitrogen": 90,
+                "phosphorus": 45,
+                "potassium": 35,
+                "soil_ph": 6.5,
+                "status": "Harvested"
+            }
+        ]
+    }
+}
+
 PRICE_FEATURE_DEFAULTS = {
     "MSP": 2500.0,
     "Kharif_Arrival": DEFAULT_MARKET["kharif_arrival"],
@@ -182,6 +246,24 @@ def safe_float(value, default):
         return float(value)
     except (TypeError, ValueError):
         return float(default)
+
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# AUTHENTICATION HELPERS
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+def require_login(f):
+    """Decorator to check if user is logged in"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if "user_email" not in session:
+            return jsonify({"error": "Unauthorized"}), 401
+        return f(*args, **kwargs)
+    return decorated_function
+
+
+def get_user_email():
+    """Get current logged-in user email from session"""
+    return session.get("user_email")
 
 
 def feature_names_for(model, fallback):
@@ -752,9 +834,308 @@ def get_feature_importance(model, feature_names):
 # ROUTES
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+# ═════════════════════ AUTHENTICATION ROUTES ═════════════════════
+@app.route("/api/login", methods=["POST"])
+def login():
+    """User login endpoint"""
+    data = request.get_json()
+    email = data.get("email", "").strip()
+    password = data.get("password", "").strip()
+
+    if email in MOCK_USERS and MOCK_USERS[email]["password"] == password:
+        session["user_email"] = email
+        user_info = MOCK_USERS[email].copy()
+        user_info.pop("password", None)
+        return jsonify({
+            "success": True,
+            "message": f"Welcome, {user_info['farmer_name']}!",
+            "user": user_info
+        }), 200
+    
+    return jsonify({
+        "success": False,
+        "message": "Invalid email or password"
+    }), 401
+
+
+@app.route("/api/logout", methods=["POST"])
+def logout():
+    """User logout endpoint"""
+    session.clear()
+    return jsonify({"success": True, "message": "Logged out successfully"}), 200
+
+
+@app.route("/api/check-session", methods=["GET"])
+def check_session():
+    """Check if user is logged in"""
+    if "user_email" in session:
+        user_email = session["user_email"]
+        user_info = MOCK_USERS[user_email].copy()
+        user_info.pop("password", None)
+        return jsonify({
+            "logged_in": True,
+            "user": user_info
+        }), 200
+    return jsonify({"logged_in": False}), 200
+
+
+# ═════════════════════ FARM DATA ROUTES ═════════════════════
+@app.route("/api/farm/info", methods=["GET"])
+@require_login
+def get_farm_info():
+    """Get farmer's farm information"""
+    user_email = get_user_email()
+    if user_email not in FARM_DATA:
+        return jsonify({"error": "Farm data not found"}), 404
+    
+    farm_data = FARM_DATA[user_email]
+    user_info = MOCK_USERS[user_email].copy()
+    user_info.pop("password", None)
+    
+    return jsonify({
+        "farmer": user_info,
+        "farm": farm_data
+    }), 200
+
+
+@app.route("/api/farm/crops", methods=["GET"])
+@require_login
+def get_farm_crops():
+    """Get all crops on the farm"""
+    user_email = get_user_email()
+    if user_email not in FARM_DATA:
+        return jsonify({"error": "Farm data not found"}), 404
+    
+    crops = FARM_DATA[user_email].get("crops", [])
+    return jsonify({
+        "total_crops": len(crops),
+        "crops": crops
+    }), 200
+
+
+@app.route("/api/farm/crop/<crop_id>", methods=["GET"])
+@require_login
+def get_crop_detail(crop_id):
+    """Get detailed information about a specific crop"""
+    user_email = get_user_email()
+    if user_email not in FARM_DATA:
+        return jsonify({"error": "Farm data not found"}), 404
+    
+    crops = FARM_DATA[user_email].get("crops", [])
+    crop = next((c for c in crops if c["id"] == crop_id), None)
+    
+    if not crop:
+        return jsonify({"error": "Crop not found"}), 404
+    
+    return jsonify(crop), 200
+
+
+@app.route("/api/farm/crop/add", methods=["POST"])
+@require_login
+def add_crop():
+    """Add a new crop to the farm"""
+    user_email = get_user_email()
+    if user_email not in FARM_DATA:
+        return jsonify({"error": "Farm data not found"}), 404
+    
+    data = request.get_json()
+    
+    # Validate required fields
+    required_fields = ["name", "area", "planting_date", "expected_harvest", "nitrogen", "phosphorus", "potassium", "soil_ph"]
+    if not all(field in data for field in required_fields):
+        return jsonify({"error": "Missing required fields"}), 400
+    
+    # Create new crop entry
+    crop_id = f"crop_{int(time.time() * 1000)}"
+    new_crop = {
+        "id": crop_id,
+        "name": data.get("name"),
+        "area": float(data.get("area")),
+        "planting_date": data.get("planting_date"),
+        "expected_harvest": data.get("expected_harvest"),
+        "nitrogen": float(data.get("nitrogen")),
+        "phosphorus": float(data.get("phosphorus")),
+        "potassium": float(data.get("potassium")),
+        "soil_ph": float(data.get("soil_ph")),
+        "status": "Just Added"
+    }
+    
+    # Add to farm data
+    FARM_DATA[user_email]["crops"].append(new_crop)
+    
+    # Check if total area exceeds available land
+    total_area = sum(c["area"] for c in FARM_DATA[user_email]["crops"])
+    available_land = FARM_DATA[user_email]["total_land"]
+    
+    if total_area > available_land:
+        FARM_DATA[user_email]["crops"].pop()  # Remove the crop we just added
+        return jsonify({
+            "error": f"Total area ({total_area}ha) exceeds available land ({available_land}ha)"
+        }), 400
+    
+    return jsonify({
+        "success": True,
+        "message": f"{new_crop['name']} added successfully!",
+        "crop": new_crop
+    }), 201
+
+
+@app.route("/api/farm/crop/<crop_id>/delete", methods=["DELETE"])
+@require_login
+def delete_crop(crop_id):
+    """Delete a crop from the farm"""
+    user_email = get_user_email()
+    if user_email not in FARM_DATA:
+        return jsonify({"error": "Farm data not found"}), 404
+    
+    crops = FARM_DATA[user_email].get("crops", [])
+    crop_index = next((i for i, c in enumerate(crops) if c["id"] == crop_id), None)
+    
+    if crop_index is None:
+        return jsonify({"error": "Crop not found"}), 404
+    
+    deleted_crop = crops.pop(crop_index)
+    return jsonify({
+        "success": True,
+        "message": f"{deleted_crop['name']} deleted successfully!",
+        "deleted_crop": deleted_crop
+    }), 200
+
+
+@app.route("/api/farm/crop/<crop_id>/analyze", methods=["POST"])
+@require_login
+def analyze_crop(crop_id):
+    """Run analysis on a specific crop - This is where the agent/analysis will be used"""
+    user_email = get_user_email()
+    if user_email not in FARM_DATA:
+        return jsonify({"error": "Farm data not found"}), 404
+    
+    crops = FARM_DATA[user_email].get("crops", [])
+    crop = next((c for c in crops if c["id"] == crop_id), None)
+    
+    if not crop:
+        return jsonify({"error": "Crop not found"}), 404
+    
+    # Get location for weather and satellite data
+    user_info = MOCK_USERS[user_email]
+    lat = user_info.get("latitude", 19.8967)
+    lon = user_info.get("longitude", 73.7754)
+    
+    # Fetch weather data
+    weather_data = fetch_weather(lat, lon)
+    
+    # Prepare core inputs from crop data
+    core_inputs = {
+        "N": crop.get("nitrogen", INPUT_DEFAULTS["N"]),
+        "P": crop.get("phosphorus", INPUT_DEFAULTS["P"]),
+        "K": crop.get("potassium", INPUT_DEFAULTS["K"]),
+        "Temperature": weather_data.get("temperature", INPUT_DEFAULTS["Temperature"]) if weather_data else INPUT_DEFAULTS["Temperature"],
+        "Humidity": weather_data.get("humidity", INPUT_DEFAULTS["Humidity"]) if weather_data else INPUT_DEFAULTS["Humidity"],
+        "pH": crop.get("soil_ph", INPUT_DEFAULTS["pH"]),
+        "Rainfall": weather_data.get("rainfall", INPUT_DEFAULTS["Rainfall"]) if weather_data else INPUT_DEFAULTS["Rainfall"],
+    }
+    
+    # Get NDVI data
+    ndvi_data = fetch_planet_ndvi(lat, lon)
+    if not ndvi_data:
+        ndvi_data = compute_ndvi_simulated(
+            core_inputs["Temperature"],
+            core_inputs["Humidity"],
+            core_inputs["Rainfall"],
+            core_inputs["pH"]
+        )
+    
+    # Make predictions for the current crop
+    crop_result = predict_crop_recommendation(core_inputs)
+    pipeline_crop, fallback_msg = select_pipeline_crop(crop_result)
+    crop_index = resolve_crop_index(pipeline_crop)
+    
+    yield_kg_per_ha, yield_tons_per_ha = predict_yield_tons(core_inputs, crop_index or 0)
+    price_per_quintal, msp, price_data = predict_price_per_quintal(
+        {},
+        crop.get("name"),
+        crop_index or 0
+    )
+    profit, price_per_ton = calculate_profit(yield_tons_per_ha, price_per_quintal)
+    
+    # Get advisory (Gemini or rule-based)
+    advisory = generate_gemini_advisory(
+        crop.get("name"),
+        yield_tons_per_ha,
+        price_per_quintal,
+        profit,
+        ndvi_data,
+        core_inputs["Temperature"],
+        core_inputs["Humidity"],
+        core_inputs["pH"],
+        core_inputs["Rainfall"],
+        core_inputs["N"],
+        core_inputs["P"],
+        core_inputs["K"],
+        weather_data,
+        'en'
+    )
+    
+    if not advisory:
+        advisory = generate_fallback_advisory(
+            crop.get("name"),
+            ndvi_data,
+            core_inputs["Temperature"],
+            core_inputs["Humidity"],
+            core_inputs["pH"],
+            core_inputs["Rainfall"],
+            core_inputs["N"],
+            core_inputs["P"],
+            core_inputs["K"]
+        )
+    
+    return jsonify({
+        "crop": crop,
+        "analysis": {
+            "crop_recommendation": crop_result,
+            "yield": {
+                "kg_per_ha": yield_kg_per_ha,
+                "tons_per_ha": yield_tons_per_ha
+            },
+            "pricing": {
+                "price_per_quintal": price_per_quintal,
+                "price_per_ton": price_per_ton,
+                "msp": msp,
+                "profit": profit
+            },
+            "satellite": ndvi_data,
+            "weather": weather_data,
+            "advisory": advisory
+        }
+    }), 200
+
 @app.route("/")
-def index():
-    return send_from_directory("templates", "index.html")
+def home():
+    """Redirect to login or dashboard based on session"""
+    print(f"🏠 HOME route hit - session has user_email: {'user_email' in session}")
+    print(f"   template_folder: {app.template_folder}")
+    print(f"   app.root_path: {app.root_path}")
+    if "user_email" in session:
+        print(f"   -> Returning dashboard.html")
+        return send_from_directory(app.template_folder, "dashboard.html")
+    print(f"   -> Returning login.html")
+    return send_from_directory(app.template_folder, "login.html")
+
+
+@app.route("/login")
+def login_page():
+    """Login page"""
+    if "user_email" in session:
+        return send_from_directory(app.template_folder, "dashboard.html")
+    return send_from_directory(app.template_folder, "login.html")
+
+
+@app.route("/dashboard")
+def dashboard():
+    """Farm dashboard"""
+    if "user_email" not in session:
+        return send_from_directory(app.template_folder, "login.html")
+    return send_from_directory(app.template_folder, "dashboard.html")
 
 @app.route("/static/<path:path>")
 def serve_static(path):
