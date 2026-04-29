@@ -1111,13 +1111,11 @@ def analyze_crop(crop_id):
 
 @app.route("/")
 def home():
-    """Redirect to login or dashboard based on session"""
+    """Comprehensive Smart Farming Decision System for authenticated users"""
     print(f"🏠 HOME route hit - session has user_email: {'user_email' in session}")
-    print(f"   template_folder: {app.template_folder}")
-    print(f"   app.root_path: {app.root_path}")
     if "user_email" in session:
-        print(f"   -> Returning dashboard.html")
-        return send_from_directory(app.template_folder, "dashboard.html")
+        print(f"   -> Returning index.html (Full Analysis System)")
+        return send_from_directory(app.template_folder, "index.html")
     print(f"   -> Returning login.html")
     return send_from_directory(app.template_folder, "login.html")
 
@@ -1136,6 +1134,13 @@ def dashboard():
     if "user_email" not in session:
         return send_from_directory(app.template_folder, "login.html")
     return send_from_directory(app.template_folder, "dashboard.html")
+
+@app.route("/analysis")
+def analysis():
+    """Comprehensive analysis page"""
+    if "user_email" not in session:
+        return send_from_directory(app.template_folder, "login.html")
+    return send_from_directory(app.template_folder, "analysis.html")
 
 @app.route("/static/<path:path>")
 def serve_static(path):
@@ -1828,7 +1833,8 @@ Provide a comprehensive disaster response plan in JSON format (return ONLY the J
     "helpline": "<relevant helpline numbers>"
 }}
 
-Provide 5-8 immediate actions, 3-4 crop protection measures, 2-3 government schemes, and 3-4 post-disaster steps. Keep advice practical, specific for Indian marginal farmers. Include specific quantities, timings, and method names."""
+Provide 5-8 immediate actions, 3-4 crop protection measures, 2-3 government schemes, and 3-4 post-disaster steps. Keep advice practical, specific for Indian marginal farmers. Include specific quantities, timings, and method names.
+"""
 
         resp = gemini_request(prompt, temperature=0.6, max_tokens=2000)
 
@@ -1886,104 +1892,66 @@ def crop_chatbot():
     """AI chatbot for crop suitability and farming questions."""
     try:
         data = request.get_json()
-        question = data.get("question", "")
-        context = data.get("context", {})
+        mode = str(data.get("mode", "manual")).lower()
 
-        if not question.strip():
-            return jsonify({"success": False, "error": "Please ask a question"}), 400
+        lat = data.get("latitude")
+        lon = data.get("longitude")
+        lat = None if lat in (None, "") else safe_float(lat, 0.0)
+        lon = None if lon in (None, "") else safe_float(lon, 0.0)
 
-        context_str = ""
-        if context:
-            context_str = f"""
-FARMER'S CURRENT DATA:
-- Location: {context.get('location', 'India')}
-- Current Crop: {context.get('crop', 'Not specified')}
-- Temperature: {context.get('temperature', 'N/A')}°C
-- Humidity: {context.get('humidity', 'N/A')}%
-- Rainfall: {context.get('rainfall', 'N/A')} mm/month
-- Soil pH: {context.get('ph', 'N/A')}
-- N/P/K: {context.get('N', 'N/A')}/{context.get('P', 'N/A')}/{context.get('K', 'N/A')} kg/ha
-- NDVI: {context.get('ndvi', 'N/A')}"""
+        weather_info = None
+        if mode == "auto" and lat is not None and lon is not None:
+            weather_info = fetch_weather(lat, lon)
+            if not weather_info:
+                return jsonify({"success": False, "error": "Could not fetch weather data"}), 500
 
-        language = data.get('language', 'en')
-        lang_instruction = ""
-        if language == 'as':
-            lang_instruction = "\n8. IMPORTANT: You MUST respond ENTIRELY in Assamese language (অসমীয়া ভাষা). Use proper Assamese script. Do NOT use Bengali. The ANSWER, QUICK_TIPS, and all text must be in accurate Assamese. Only the format labels (ANSWER:, QUICK_TIPS:, CONFIDENCE:) should remain in English."
+        core_inputs = normalize_core_inputs(data, weather_info)
+        crop_result = predict_crop_recommendation(core_inputs)
+        crop_name = crop_result["name"]
+        pipeline_crop_name, pipeline_note = select_pipeline_crop(crop_result)
+        crop_index = resolve_crop_index(pipeline_crop_name)
 
-        prompt = f"""You are an expert Indian agricultural advisor helping marginal farmers. Answer the following question in a helpful, practical way.
-{context_str}
+        yield_kg_per_ha, yield_tons_per_ha = predict_yield_tons(core_inputs, crop_index)
+        price_per_quintal, msp, market_inputs = predict_price_per_quintal(data, pipeline_crop_name, crop_index)
+        profit, price_per_ton = calculate_profit(yield_tons_per_ha, price_per_quintal)
 
-FARMER'S QUESTION: {question}
+        if lat is not None and lon is not None:
+            ndvi_data = fetch_planet_ndvi(lat, lon) or compute_ndvi_simulated(
+                core_inputs["Temperature"], core_inputs["Humidity"], core_inputs["Rainfall"], core_inputs["pH"]
+            )
+        else:
+            ndvi_data = compute_ndvi_simulated(
+                core_inputs["Temperature"], core_inputs["Humidity"], core_inputs["Rainfall"], core_inputs["pH"]
+            )
 
-Rules:
-1. Give specific, actionable advice relevant to Indian farming conditions
-2. Include quantities, timings, and specific product/variety names when relevant
-3. If they ask about crop suitability, explain why it is or isn't suitable based on their conditions
-4. Mention relevant government schemes if applicable
-5. Keep the answer concise (3-5 paragraphs max) but informative
-6. Use simple language that a marginal farmer can understand
-7. If you don't know, say so honestly{lang_instruction}
 
-Respond in plain text using the following format:
-
-ANSWER:
-<your detailed answer>
-
-QUICK_TIPS:
-- <tip 1>
-- <tip 2>
-- <tip 3>
-
-CONFIDENCE: <high/medium/low>"""
-
-        resp = gemini_request(prompt, temperature=0.7, max_tokens=1200)
-
-        if resp is None or resp.status_code != 200:
-            return jsonify({"success": False, "error": "AI service unavailable"}), 500
-
-        text = resp.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
-
-        # Parse response
-        answer = text
-        tips = []
-        confidence = "medium"
-
-        if "ANSWER:" in text:
-            parts = text.split("ANSWER:", 1)[1]
-            if "QUICK_TIPS:" in parts:
-                answer, tips_section = parts.split("QUICK_TIPS:", 1)
-                answer = answer.strip()
-                if "CONFIDENCE:" in tips_section:
-                    tips_text, conf = tips_section.split("CONFIDENCE:", 1)
-                    confidence = conf.strip().lower()
-                else:
-                    tips_text = tips_section
-                tips = [t.strip().lstrip("- ") for t in tips_text.strip().split("\n") if t.strip().startswith("-")]
-            else:
-                answer = parts.strip()
 
         return jsonify({
             "success": True,
-            "answer": answer,
-            "tips": tips,
-            "confidence": confidence,
-            "source": "Gemini AI",
-            "question": question
+            "crop": crop_name,
+            "yield": {
+                "kg_per_ha": yield_kg_per_ha,
+                "tons_per_ha": yield_tons_per_ha
+            },
+            "price": {
+                "per_quintal": price_per_quintal,
+                "per_ton": price_per_ton,
+                "msp": msp,
+                "profit": profit
+            },
+            "ndvi": ndvi_data
         })
-
+    
     except Exception as e:
+        print(f"Prediction Error: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({"success": False, "error": str(e)}), 500
 
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# AGRICULTURAL NEWS & SUBSIDIES (NewsAPI Integration)
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-@app.route("/api/news", methods=["GET", "POST"])
-def fetch_agricultural_news():
-    """
-    Fetch smart agriculture news using TheNewsAPI /top endpoint.
-    Supports filtering by agriculture, weather, market prices, and technology.
-    """
+@app.route("/api/news", methods=["POST", "GET"])
+def get_news():
+    """Fetch agricultural news from external API with caching."""
     try:
         # Get parameters from POST body or GET query
         if request.method == "POST":
@@ -2104,7 +2072,7 @@ def fetch_agricultural_news():
 def get_alternative_crops():
     """
     Recommend alternative crops based on current conditions.
-    Useful when farmer doesn't want the primary recommended crop.
+    Useful when the farmer does not want the primary recommended crop.
     """
     try:
         data = request.get_json(silent=True) or {}

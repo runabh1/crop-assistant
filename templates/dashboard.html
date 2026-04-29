@@ -99,7 +99,7 @@
                     <h1 id="farmerName">Farmer's Farm</h1>
                     <p id="farmLocation" style="color: var(--text-muted); font-size: 0.9rem; margin-top: 4px;">📍 Loading...</p>
                 </div>
-                <button class="btn-logout" id="analyzeBtn" style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);">📊 Analyze & Get Advisory</button>
+                <button class="btn-logout" id="analyzeBtn" style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); cursor: pointer;" onclick="window.location.href='/'">📊 Analyze & Get Advisory</button>
             </div>
 
             <!-- Farm Summary -->
@@ -403,53 +403,172 @@
         function renderAnalysis(data) {
             const crop = data.crop;
             const analysis = data.analysis;
+            const weather = analysis.weather || {};
+            const satellite = analysis.satellite || {};
 
             let html = `
                 <div class="analysis-result">
-                    <h3 style="margin-bottom: 16px;">🌾 ${crop.name}</h3>
+                    <h3 style="margin-bottom: 20px; font-size: 1.3rem;">🌾 ${crop.name} - Comprehensive Analysis</h3>
                     
-                    <div class="analysis-grid">
-                        <div class="analysis-item">
-                            <div class="analysis-label">Yield Prediction</div>
-                            <div class="analysis-value">${analysis.yield.tons_per_ha.toFixed(2)}</div>
-                            <div style="font-size: 0.75rem; color: var(--text-muted);">tons/hectare</div>
-                        </div>
-                        <div class="analysis-item">
-                            <div class="analysis-label">Market Price</div>
-                            <div class="analysis-value">₹${analysis.pricing.price_per_quintal.toFixed(0)}</div>
-                            <div style="font-size: 0.75rem; color: var(--text-muted);">per quintal</div>
-                        </div>
-                        <div class="analysis-item">
-                            <div class="analysis-label">Expected Profit</div>
-                            <div class="analysis-value">₹${(analysis.pricing.profit / 1000).toFixed(1)}K</div>
-                            <div style="font-size: 0.75rem; color: var(--text-muted);">per hectare</div>
+                    <!-- KEY METRICS -->
+                    <div style="background: var(--bg-secondary); padding: 16px; border-radius: 8px; margin-bottom: 20px;">
+                        <h4 style="margin-bottom: 12px;">📊 Key Performance Metrics</h4>
+                        <div class="analysis-grid">
+                            <div class="analysis-item">
+                                <div class="analysis-label">Estimated Yield</div>
+                                <div class="analysis-value">${analysis.yield.tons_per_ha.toFixed(2)}</div>
+                                <div style="font-size: 0.75rem; color: var(--text-muted);">tons/hectare</div>
+                            </div>
+                            <div class="analysis-item">
+                                <div class="analysis-label">Yield (kg/ha)</div>
+                                <div class="analysis-value">${analysis.yield.kg_per_ha.toFixed(0)}</div>
+                                <div style="font-size: 0.75rem; color: var(--text-muted);">kg/hectare</div>
+                            </div>
+                            <div class="analysis-item">
+                                <div class="analysis-label">Market Price</div>
+                                <div class="analysis-value">₹${analysis.pricing.price_per_quintal.toFixed(0)}</div>
+                                <div style="font-size: 0.75rem; color: var(--text-muted);">per quintal</div>
+                            </div>
+                            <div class="analysis-item">
+                                <div class="analysis-label">MSP (Min. Support Price)</div>
+                                <div class="analysis-value">₹${analysis.pricing.msp.toFixed(0)}</div>
+                                <div style="font-size: 0.75rem; color: var(--text-muted);">per quintal</div>
+                            </div>
+                            <div class="analysis-item">
+                                <div class="analysis-label">Expected Profit</div>
+                                <div class="analysis-value" style="color: #22c55e;">₹${(analysis.pricing.profit / 1000).toFixed(1)}K</div>
+                                <div style="font-size: 0.75rem; color: var(--text-muted);">per hectare</div>
+                            </div>
+                            <div class="analysis-item">
+                                <div class="analysis-label">Price per Ton</div>
+                                <div class="analysis-value">₹${analysis.pricing.price_per_ton.toFixed(0)}</div>
+                                <div style="font-size: 0.75rem; color: var(--text-muted);">per ton</div>
+                            </div>
                         </div>
                     </div>
 
-                    <h4 style="margin: 16px 0 8px;">📡 Crop Health (NDVI)</h4>
-                    <p style="margin-bottom: 16px; color: var(--text-secondary);">
-                        <span style="display: inline-block; padding: 4px 8px; background: var(--bg-card); border-radius: 4px; margin-right: 8px;">
-                            NDVI: <strong>${analysis.satellite.ndvi}</strong>
-                        </span>
-                        <span style="display: inline-block; padding: 4px 8px; background: var(--bg-card); border-radius: 4px;">
-                            Status: <strong>${analysis.satellite.health}</strong>
-                        </span>
-                    </p>
-
-                    <h4 style="margin: 16px 0 8px;">🧠 AI Advisory</h4>
-                    ${analysis.advisory && analysis.advisory.advisories ? `
-                        <div style="margin-bottom: 12px;">
-                            ${analysis.advisory.advisories.map(adv => `
-                                <div style="background: var(--bg-card); padding: 10px; margin-bottom: 8px; border-radius: 6px; border-left: 3px solid ${adv.severity === 'critical' ? '#ef4444' : adv.severity === 'warning' ? '#f59e0b' : '#22c55e'};">
-                                    <strong>${adv.icon} ${adv.title}</strong>
-                                    <p style="margin: 4px 0 0; font-size: 0.9rem; color: var(--text-secondary);">${adv.message}</p>
-                                </div>
-                            `).join('')}
+                    <!-- SATELLITE & SENSOR DATA -->
+                    <div style="background: var(--bg-secondary); padding: 16px; border-radius: 8px; margin-bottom: 20px;">
+                        <h4 style="margin-bottom: 12px;">🛰️ Satellite & Sensor Data (NDVI)</h4>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px;">
+                            <div style="background: var(--bg-card); padding: 12px; border-radius: 6px; border-left: 3px solid #3b82f6;">
+                                <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 4px;">NDVI Index</div>
+                                <div style="font-size: 1.2rem; font-weight: 700; color: #3b82f6;">${(satellite.ndvi || 0).toFixed(2)}</div>
+                            </div>
+                            <div style="background: var(--bg-card); padding: 12px; border-radius: 6px; border-left: 3px solid ${satellite.color || '#22c55e'};">
+                                <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 4px;">Crop Health</div>
+                                <div style="font-size: 1.1rem; font-weight: 700; color: ${satellite.color || '#22c55e'};">${satellite.health || 'Healthy'}</div>
+                            </div>
+                            <div style="background: var(--bg-card); padding: 12px; border-radius: 6px; border-left: 3px solid #f59e0b;">
+                                <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 4px;">Data Source</div>
+                                <div style="font-size: 0.95rem; font-weight: 700; color: var(--text-primary);">Planet Labs</div>
+                            </div>
                         </div>
-                        <p style="font-size: 0.9rem; background: var(--bg-card); padding: 10px; border-radius: 6px; margin-top: 12px;">
-                            <strong>Summary:</strong> ${analysis.advisory.overall_summary}
+                        <p style="margin-top: 10px; font-size: 0.85rem; color: var(--text-secondary); background: var(--bg-card); padding: 8px; border-radius: 4px;">
+                            <strong>NDVI Interpretation:</strong> Values range from -1 to 1. Higher values (>0.6) indicate healthier vegetation. Values below 0.3 suggest crop stress.
                         </p>
-                    ` : '<p style="color: var(--text-muted);">Advisory not available</p>'}
+                    </div>
+
+                    <!-- WEATHER CONDITIONS -->
+                    <div style="background: var(--bg-secondary); padding: 16px; border-radius: 8px; margin-bottom: 20px;">
+                        <h4 style="margin-bottom: 12px;">🌤️ Current Weather Conditions</h4>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px;">
+                            <div style="background: var(--bg-card); padding: 10px; border-radius: 6px;">
+                                <div style="font-size: 0.75rem; color: var(--text-muted);">Temperature</div>
+                                <div style="font-size: 1.3rem; font-weight: 700;">${(weather.temperature || 0).toFixed(1)}°C</div>
+                            </div>
+                            <div style="background: var(--bg-card); padding: 10px; border-radius: 6px;">
+                                <div style="font-size: 0.75rem; color: var(--text-muted);">Humidity</div>
+                                <div style="font-size: 1.3rem; font-weight: 700;">${(weather.humidity || 0).toFixed(1)}%</div>
+                            </div>
+                            <div style="background: var(--bg-card); padding: 10px; border-radius: 6px;">
+                                <div style="font-size: 0.75rem; color: var(--text-muted);">Rainfall</div>
+                                <div style="font-size: 1.3rem; font-weight: 700;">${(weather.rainfall || 0).toFixed(1)}mm</div>
+                            </div>
+                            <div style="background: var(--bg-card); padding: 10px; border-radius: 6px;">
+                                <div style="font-size: 0.75rem; color: var(--text-muted);">Condition</div>
+                                <div style="font-size: 1rem; font-weight: 700;">${weather.condition || 'Clear'}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SOIL NUTRIENTS -->
+                    <div style="background: var(--bg-secondary); padding: 16px; border-radius: 8px; margin-bottom: 20px;">
+                        <h4 style="margin-bottom: 12px;">🧪 Soil Nutrients & Properties</h4>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px;">
+                            <div style="background: var(--bg-card); padding: 10px; border-radius: 6px;">
+                                <div style="font-size: 0.75rem; color: var(--text-muted);">Nitrogen (N)</div>
+                                <div style="font-size: 1.2rem; font-weight: 700;">${crop.nitrogen}</div>
+                                <div style="font-size: 0.7rem; color: var(--text-muted);">kg/ha</div>
+                            </div>
+                            <div style="background: var(--bg-card); padding: 10px; border-radius: 6px;">
+                                <div style="font-size: 0.75rem; color: var(--text-muted);">Phosphorus (P)</div>
+                                <div style="font-size: 1.2rem; font-weight: 700;">${crop.phosphorus}</div>
+                                <div style="font-size: 0.7rem; color: var(--text-muted);">kg/ha</div>
+                            </div>
+                            <div style="background: var(--bg-card); padding: 10px; border-radius: 6px;">
+                                <div style="font-size: 0.75rem; color: var(--text-muted);">Potassium (K)</div>
+                                <div style="font-size: 1.2rem; font-weight: 700;">${crop.potassium}</div>
+                                <div style="font-size: 0.7rem; color: var(--text-muted);">kg/ha</div>
+                            </div>
+                            <div style="background: var(--bg-card); padding: 10px; border-radius: 6px;">
+                                <div style="font-size: 0.75rem; color: var(--text-muted);">Soil pH</div>
+                                <div style="font-size: 1.2rem; font-weight: 700;">${crop.soil_ph}</div>
+                                <div style="font-size: 0.7rem; color: var(--text-muted);">0-14 scale</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- AI ADVISORY & RECOMMENDATIONS -->
+                    <div style="background: var(--bg-secondary); padding: 16px; border-radius: 8px; margin-bottom: 20px;">
+                        <h4 style="margin-bottom: 12px;">🧠 AI-Powered Advisory & Recommendations</h4>
+                        ${analysis.advisory && analysis.advisory.advisories ? `
+                            <div style="margin-bottom: 12px;">
+                                ${analysis.advisory.advisories.map(adv => `
+                                    <div style="background: var(--bg-card); padding: 12px; margin-bottom: 10px; border-radius: 6px; border-left: 4px solid ${adv.severity === 'critical' ? '#ef4444' : adv.severity === 'warning' ? '#f59e0b' : '#22c55e'}; border-top: ${adv.severity === 'critical' ? '2px solid #ef4444' : ''};">
+                                        <div style="font-weight: 700; margin-bottom: 4px; color: ${adv.severity === 'critical' ? '#ef4444' : adv.severity === 'warning' ? '#f59e0b' : '#22c55e'};">
+                                            ${adv.icon || '💡'} ${adv.title}
+                                        </div>
+                                        <p style="margin: 0; font-size: 0.9rem; color: var(--text-secondary);">${adv.message}</p>
+                                    </div>
+                                `).join('')}
+                            </div>
+                            <div style="background: var(--bg-card); padding: 12px; border-radius: 6px; border-left: 4px solid #3b82f6; margin-top: 12px;">
+                                <div style="font-weight: 700; color: #3b82f6; margin-bottom: 6px;">📋 Summary</div>
+                                <p style="margin: 0; font-size: 0.9rem; color: var(--text-secondary); line-height: 1.5;">${analysis.advisory.overall_summary || 'Overall conditions appear normal.'}</p>
+                            </div>
+                        ` : '<p style="color: var(--text-muted);">Advisory not available</p>'}
+                    </div>
+
+                    <!-- CROP DETAILS -->
+                    <div style="background: var(--bg-secondary); padding: 16px; border-radius: 8px; margin-bottom: 20px;">
+                        <h4 style="margin-bottom: 12px;">📅 Crop Timeline</h4>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                            <div style="background: var(--bg-card); padding: 10px; border-radius: 6px;">
+                                <div style="font-size: 0.75rem; color: var(--text-muted);">Planting Date</div>
+                                <div style="font-size: 1rem; font-weight: 700;">${crop.planting_date || 'N/A'}</div>
+                            </div>
+                            <div style="background: var(--bg-card); padding: 10px; border-radius: 6px;">
+                                <div style="font-size: 0.75rem; color: var(--text-muted);">Current Status</div>
+                                <div style="font-size: 1rem; font-weight: 700;">${crop.status || 'Active'}</div>
+                            </div>
+                            <div style="background: var(--bg-card); padding: 10px; border-radius: 6px;">
+                                <div style="font-size: 0.75rem; color: var(--text-muted);">Area</div>
+                                <div style="font-size: 1rem; font-weight: 700;">${crop.area} hectares</div>
+                            </div>
+                            <div style="background: var(--bg-card); padding: 10px; border-radius: 6px;">
+                                <div style="font-size: 0.75rem; color: var(--text-muted);">Expected Harvest</div>
+                                <div style="font-size: 1rem; font-weight: 700;">${crop.harvest_date || 'TBD'}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- INFO BOX -->
+                    <div style="background: rgba(59, 130, 246, 0.1); padding: 12px; border-radius: 6px; border-left: 4px solid #3b82f6;">
+                        <div style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.6;">
+                            <strong>ℹ️ Analysis Information:</strong> This comprehensive analysis combines satellite imagery, weather data, soil parameters, and ML models to provide actionable insights. Recommendations are updated based on real-time conditions.
+                        </div>
+                    </div>
                 </div>
             `;
 
